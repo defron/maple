@@ -31,14 +31,14 @@ CREATE TABLE IF NOT EXISTS maple.txn_source (
 CREATE TABLE IF NOT EXISTS maple.interval (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
-    timespan INTERVAL UNIQUE NOT NULL,
+    timespan INTERVAL NOT NULL,
     allowed_for_budget BOOLEAN NOT NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 INSERT INTO maple.interval (id, name, timespan, allowed_for_budget)
-VALUES (1, 'Monthly', '1 month', TRUE);
+    VALUES (1, 'Monthly', '1 month', TRUE);
 
 CREATE TABLE IF NOT EXISTS maple.acct_auth (
 	id SERIAL PRIMARY KEY,
