@@ -1,0 +1,13 @@
+{
+    "python.analysis.autoImportCompletions": true,
+    "python.languageServer": "Pylance",
+    "python.missingPackage.severity": "Warning",
+    "python.testing.pytestEnabled": true,
+    "python.autoComplete.extraPaths": [
+
+    ],
+    "python.analysis.typeCheckingMode": "strict",
+    "python.terminal.activateEnvInCurrentTerminal": false,
+    "python.analysis.extraPaths": [],
+    "mypy.dmypyExecutable": "${workspaceFolder}/.venv/bin/dmypy"
+}

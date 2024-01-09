@@ -1,0 +1,14 @@
+# docker-compose.yml
+version: '3.1'
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: maple
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    ports:
+      - 54320:5432

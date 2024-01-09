@@ -1,0 +1,30 @@
+[project]
+name = "maple"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Kevin aka defron", email = "git.repos@defron.org"},
+]
+dependencies = [
+    "litestar[sqlalchemy,standard]>=2.5.0",
+    "asyncpg>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.25",
+    "alembic>=1.13.1",
+]
+requires-python = "==3.10.*"
+readme = "README.md"
+license = {text = "MPL-2.0"}
+
+
+[tool.pdm]
+package-type = "application"
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=7.4.4",
+]
+lint = [
+    "black>=23.12.1",
+    "pylint>=3.0.3",
+    "mypy>=1.8.0",
+]
