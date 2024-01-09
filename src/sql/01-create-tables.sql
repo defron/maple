@@ -20,16 +20,6 @@ CREATE TABLE IF NOT EXISTS maple.user (
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS maple.category_group (
-	id SERIAL PRIMARY KEY,
-	name VARCHAR(128) UNIQUE NOT NULL,
-	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO maple.category_group (id, name)
-VALUES (1, 'Everything else');
-
 CREATE TABLE IF NOT EXISTS maple.txn_source (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
@@ -88,15 +78,15 @@ CREATE TABLE IF NOT EXISTS maple.tag (
 CREATE TABLE IF NOT EXISTS maple.category (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(128) UNIQUE NOT NULL,
-    category_group_id INT NOT NULL DEFAULT 1 REFERENCES maple.category_group(id) ON DELETE SET DEFAULT,
+    logo TEXT,
     is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
-    parent_category_id INT REFERENCES maple.category(id) ON DELETE CASCADE,
+    parent_category_id INT REFERENCES maple.category(id) ON DELETE SET NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO maple.category (id, name, category_group_id)
-VALUES (1, 'Uncategorized', 1);
+INSERT INTO maple.category (id, name, parent_category_id)
+    VALUES (1, 'Uncategorized', NULL);
 
 CREATE TABLE IF NOT EXISTS maple.account (
 	id SERIAL PRIMARY KEY,
