@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS maple;
 CREATE TABLE IF NOT EXISTS maple.app (
 	id SERIAL PRIMARY KEY,
 	version VARCHAR(20) UNIQUE NOT NULL,
-    meadata JSONB,
+    metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -15,15 +15,15 @@ CREATE TABLE IF NOT EXISTS maple.user (
     last_name VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     pass_hash TEXT UNIQUE NOT NULL,
-    meadata JSONB,
+    metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS maple.txn_source (
-	id SERIAL PRIMARY KEY,
+	id uuid PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
-    is_hidden BOOLEAN NOT NULL,
+    has_api BOOLEAN NOT NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
     merchant_url TEXT,
     custom_note VARCHAR(4096),
     original_note VARCHAR(4096),
-    txn_source_id INT REFERENCES maple.txn_source(id) ON DELETE SET NULL,
+    txn_source_id uuid REFERENCES maple.txn_source(id) ON DELETE SET NULL,
     soft_delete BOOLEAN DEFAULT FALSE,
     is_pending BOOLEAN DEFAULT FALSE,
     hash_and_daycount CHAR(67),
@@ -225,7 +225,8 @@ CREATE TABLE IF NOT EXISTS maple.budget (
     effective_date DATE NOT NULL,
     end_date DATE NOT NULL,
     interval_id INT NOT NULL DEFAULT 1 REFERENCES maple.interval(id) ON DELETE SET DEFAULT,
-    show_always BOOLEAN DEFAULT FALSE,
+    show_always BOOLEAN DEFAULT TRUE,
+    prorate BOOLEAN DEFAULT FALSE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
