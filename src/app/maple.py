@@ -1,8 +1,9 @@
+import os
 from typing import Any, cast
 import datetime
 from collections.abc import AsyncGenerator, Sequence
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -18,6 +19,8 @@ from litestar.contrib.sqlalchemy.plugins.init.config.common import (
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 import msgspec
 from sqlalchemy import event
+
+from app.maple_config import MapleConfig
 
 
 class Base(DeclarativeBase):
@@ -74,19 +77,19 @@ def _default(val: Any) -> str:
         return str(val)
     raise TypeError()
 
-
-_settings = dict(search_path="maple")
+config = MapleConfig()
 
 # TODO: put these in a config
 __engine = create_async_engine(
-    "postgresql+asyncpg://devuser:devpass@127.0.0.1:54320/maple",
-    connect_args={"server_settings": _settings},
-    echo=False,
+    f"postgresql+asyncpg://{config.db_user}:{os.environ[config.db_password_key]}@{config.db_host}:{config.db_port}/{config.db_name}",
+    connect_args={"server_settings": dict(search_path=config.db_search_schema)},
+    echo=config.db_echo,
+    echo_pool=config.db_echo_pool,
     json_serializer=msgspec.json.Encoder(enc_hook=_default),
-    max_overflow=10,
-    pool_size=5,
-    pool_timeout=30,
-    poolclass=None,
+    max_overflow=config.db_max_oveflow,
+    pool_size=config.db_pool_size,
+    pool_timeout=config.db_pool_timeout,
+    poolclass=NullPool if config.db_pool_disable else None,
 )
 
 async_session_factory = async_sessionmaker(

@@ -10,7 +10,8 @@
             "request": "launch",
             "module": "litestar",
             "justMyCode": true,
-            "args": ["--app-dir", "./src", "run"]
+            "args": ["--app-dir", "./src", "run"],
+            "envFile": "${workspaceFolder}/.env"
         }
     ]
 }
