@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import os
 
 
-@dataclass
+@dataclass(init=False, frozen=True)
 class MapleConfig:
     db_host: str = os.environ['MAPLE_DB_HOST']
     db_user: str = os.environ['MAPLE_DB_USER']
