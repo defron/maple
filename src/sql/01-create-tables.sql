@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS maple.account (
     account_limit NUMERIC(14,4),
     is_inverted BOOLEAN NOT NULL DEFAULT FALSE,
     institution_id INT REFERENCES maple.institution(id) ON DELETE SET NULL,
-    auth_id INT REFERENCES maple.institution(id) ON DELETE SET NULL,
+    auth_id INT REFERENCES maple.acct_auth(id) ON DELETE SET NULL,
     external_account_id VARCHAR(255),
     currency_code CHAR(3),
     acct_num_masked VARCHAR(255),
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS maple.account_txn_rule (
 );
 
 CREATE TABLE IF NOT EXISTS maple.transaction (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	description VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
     account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
@@ -202,8 +202,8 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
 );
 
 CREATE TABLE IF NOT EXISTS maple.subtransaction (
-	id SERIAL PRIMARY KEY,
-    txn_id INT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
+	id BIGSERIAL PRIMARY KEY,
+    txn_id BIGINT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
     description VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
     category_id INT NOT NULL DEFAULT 1 REFERENCES maple.category(id) ON DELETE SET DEFAULT,
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS maple.subtransaction (
 CREATE TABLE IF NOT EXISTS maple.txn_tags (
 	id SERIAL PRIMARY KEY,
     tag_id INT NOT NULL REFERENCES maple.tag(id) ON DELETE CASCADE,
-    txn_id INT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
+    txn_id BIGINT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
