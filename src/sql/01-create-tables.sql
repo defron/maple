@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS maple;
 CREATE TABLE IF NOT EXISTS maple.app (
 	id SERIAL PRIMARY KEY,
 	version VARCHAR(20) UNIQUE NOT NULL,
-    metadata JSONB,
+    app_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS maple.user (
     last_name VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     pass_hash TEXT UNIQUE NOT NULL,
-    metadata JSONB,
+    salt  CHAR(32) NOT NULL,
+    user_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -28,16 +29,16 @@ CREATE TABLE IF NOT EXISTS maple.txn_source (
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS maple.interval (
+CREATE TABLE IF NOT EXISTS maple.timespan (
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
-    timespan INTERVAL NOT NULL,
+    span INTERVAL NOT NULL,
     allowed_for_budget BOOLEAN NOT NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO maple.interval (id, name, timespan, allowed_for_budget)
+INSERT INTO maple.timespan (id, name, span, allowed_for_budget)
     VALUES (1, 'Monthly', '1 month', TRUE);
 
 CREATE TABLE IF NOT EXISTS maple.acct_auth (
