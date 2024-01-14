@@ -20,20 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 import msgspec
 from sqlalchemy import event
 
-from app.maple_config import MapleConfig
-
-
-class Base(DeclarativeBase):
-    ...
-
-
-class AccountType(Base):
-    __tablename__ = "account_type"
-    id: Mapped[str] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    is_asset: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+from app.config import MapleConfig
+from app.dto.entities import AccountType
 
 
 async def provide_transaction(

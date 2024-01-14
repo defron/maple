@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS maple.user (
     first_name VARCHAR(255) UNIQUE NOT NULL,
     last_name VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    pass_hash TEXT UNIQUE NOT NULL,
+    pass_hash TEXT NOT NULL,
     salt  CHAR(32) NOT NULL,
     user_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -91,7 +91,7 @@ INSERT INTO maple.category (id, name, parent_category_id)
 
 CREATE TABLE IF NOT EXISTS maple.account (
 	id SERIAL PRIMARY KEY,
-	name VARCHAR(255) UNIQUE NOT NULL,
+	name VARCHAR(255) NOT NULL,
     account_type_id INT NOT NULL REFERENCES maple.account_type(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     external_txn_cursor_id VARCHAR(255),
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS maple.account (
     institution_id INT REFERENCES maple.institution(id) ON DELETE SET NULL,
     auth_id INT REFERENCES maple.acct_auth(id) ON DELETE SET NULL,
     external_account_id VARCHAR(255),
-    currency_code CHAR(3),
+    currency_code CHAR(3) NOT NULL DEFAULT 'USD',
     acct_num_masked VARCHAR(255),
     external_account_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -118,8 +118,8 @@ CREATE TABLE IF NOT EXISTS maple.bill (
     static_amount NUMERIC(14,4) NOT NULL DEFAULT 0,
     account_id INT REFERENCES maple.account(id) ON DELETE SET NULL,
     is_past_due BOOLEAN NOT NULL DEFAULT FALSE,
-	next_statement_date TIMESTAMP NOT NULL,
-	next_due_date TIMESTAMP NOT NULL,
+	next_statement_date DATE NOT NULL,
+	next_due_date DATE NOT NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -196,7 +196,6 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
     is_pending BOOLEAN DEFAULT FALSE,
     hash_and_daycount CHAR(67),
     source_metadata JSONB,
-    sale_quantity NUMERIC(11,4),
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
