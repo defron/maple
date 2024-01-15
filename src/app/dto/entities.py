@@ -1,7 +1,7 @@
 import datetime
 import decimal
 import uuid
-from sqlalchemy import ForeignKey, Numeric
+from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.types import Interval, BigInteger, Text
@@ -14,226 +14,228 @@ class Base(DeclarativeBase):
         dict[str, Any]: JSONB
     }
 
-class AccountType(Base):
-    __tablename__ = "account_type"
-    id: Mapped[str] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    is_asset: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
-
 class App(Base):
     __tablename__ = "app"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    version: Mapped[str]
-    app_metadata: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    version: Mapped[str] = mapped_column(String(length=20), nullable=False)
+    app_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class User(Base):
     __tablename__ = "user"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str]
-    first_name: Mapped[str]
-    last_name: Mapped[str]
-    email: Mapped[str]
-    pass_hash: Mapped[str] = mapped_column(Text)
-    salt: Mapped[str]
-    user_metadata: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    username: Mapped[str] = mapped_column(String(length=30), unique=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    email: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    pass_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    salt: Mapped[str] = mapped_column(CHAR(length=32), nullable=False)
+    user_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class TransactionSource(Base):
     __tablename__ = "txn_source"
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    has_api: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    has_api: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class TimeSpan(Base):
     __tablename__ = "timespan"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    span: Mapped[datetime.timedelta] = mapped_column(Interval)
-    allowed_for_budget: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    span: Mapped[datetime.timedelta] = mapped_column(Interval, nullable=False)
+    allowed_for_budget: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class AccountAuth(Base):
     __tablename__ = "acct_auth"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    external_auth_id: Mapped[str]
-    external_source_metadata: Mapped[dict[str, Any]]
-    external_reauth_required: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    external_auth_id: Mapped[str] = mapped_column(String(length=255))
+    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    external_reauth_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Institution(Base):
     __tablename__ = "institution"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     logo: Mapped[str] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text)
-    external_institution_id: Mapped[str]
-    external_source_metadata: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    external_institution_id: Mapped[str] = mapped_column(String(length=255))
+    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+class AccountType(Base):
+    __tablename__ = "account_type"
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    is_asset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class TransactionTag(Base):
     __tablename__ = "tag"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Category(Base):
     __tablename__ = "category"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     logo: Mapped[str] = mapped_column(Text)
-    is_hidden: Mapped[bool]
-    parent_category_id: Mapped[bool] = mapped_column(ForeignKey("category.id"))
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    parent_category_id: Mapped[bool] = mapped_column(Integer, ForeignKey("category.id", ondelete="SET NULL"))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Account(Base):
     __tablename__ = "account"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    account_type_id: Mapped[int] = mapped_column(ForeignKey("account_type.id"))
-    is_active: Mapped[bool]
-    external_txn_cursor_id: Mapped[str]
-    external_last_request_id: Mapped[str]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), nullable=False)
+    account_type_id: Mapped[int] = mapped_column(Integer, ForeignKey("account_type.id", ondelete="CASCADE"), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
+    external_txn_cursor_id: Mapped[str] = mapped_column(String(length=255))
+    external_last_request_id: Mapped[str] = mapped_column(String(length=255))
     balance: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False)
     account_limit: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=True)
-    is_inverted: Mapped[bool]
-    institution_id: Mapped[int] = mapped_column(ForeignKey("institution.id"))
-    auth_id: Mapped[int] = mapped_column(ForeignKey("acct_auth.id"))
-    external_account_id: Mapped[str]
-    currency_code: Mapped[str]
-    acct_num_masked: Mapped[str]
-    external_account_metadata: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    is_inverted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    institution_id: Mapped[int] = mapped_column(Integer, ForeignKey("institution.id", ondelete="SET NULL"))
+    auth_id: Mapped[int] = mapped_column(Integer, ForeignKey("acct_auth.id", ondelete="SET NULL"))
+    external_account_id: Mapped[str] = mapped_column(String(length=255))
+    currency_code: Mapped[str] = mapped_column(CHAR(length=3), nullable=False, server_default="USD")
+    acct_num_masked: Mapped[str] = mapped_column(String(length=255))
+    external_account_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Bill(Base):
     __tablename__ = "bill"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     url: Mapped[str] = mapped_column(Text)
-    interval_id: Mapped[int] = mapped_column(ForeignKey("interval.id"))
-    is_dynamic: Mapped[bool]
-    static_amount: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    is_past_due: Mapped[bool]
-    next_statement_date: Mapped[datetime.date]
-    next_due_date: Mapped[datetime.date]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    timespan_id: Mapped[int] = mapped_column(Integer, ForeignKey("timespan.id", ondelete="CASCADE"), nullable=False)
+    is_dynamic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
+    static_amount: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=True, default=0, server_default=text("0"))
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="SET NULL"))
+    is_past_due: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    next_statement_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    next_due_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class HistoricalAccountBalance(Base):
     __tablename__ = "historical_account_balance"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    balance_date: Mapped[datetime.date]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"))
+    balance_date: Mapped[datetime.date] = mapped_column(Date, nullable=False, server_default=text("CURRENT_DATE"))
     balance: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False)
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Cashflow(Base):
     __tablename__ = "cashflow"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    time_period: Mapped[datetime.date]
-    inflow: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False)
-    outflow: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False)
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
+    time_period: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    inflow: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False, default=decimal.Decimal('0'), server_default=text("0"))
+    outflow: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False, default=decimal.Decimal('0'), server_default=text("0"))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class InvestmentPurchase(Base):
     __tablename__ = "investment_purchase"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    ticker: Mapped[str]
-    purchase_date: Mapped[datetime.date]
+    id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
+    ticker: Mapped[str] = mapped_column(String(length=30), nullable=False)
+    purchase_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     individual_purchase_price: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
     purchase_quantity: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class InvestmentSale(Base):
     __tablename__ = "investment_sale"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    investment_purchase_id: Mapped[int] = mapped_column(ForeignKey("investment_purchase.id"))
-    sale_date: Mapped[datetime.date]
+    id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
+    investment_purchase_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("investment_purchase.id", ondelete="CASCADE"), nullable=False)
+    sale_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     individual_sale_price: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
     sale_quantity: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class AccountTransactionRule(Base):
     __tablename__ = "account_txn_rule"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    name: Mapped[str]
-    new_category_id: Mapped[int] = mapped_column(ForeignKey("category.id"))
-    additional_tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id"))
-    is_active: Mapped[bool]
-    rule_json: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
+    name: Mapped[str] = mapped_column(String(length=30), nullable=False)
+    new_category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="CASCADE"))
+    additional_tag_id: Mapped[int] = mapped_column(Integer, ForeignKey("tag.id", ondelete="SET NULL"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
+    rule_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Transaction(Base):
     __tablename__ = "transaction"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    description: Mapped[str]
+    id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
+    description: Mapped[str] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
-    account_id: Mapped[int] = mapped_column(ForeignKey("account.id"))
-    category_id: Mapped[int] = mapped_column(ForeignKey("category.id"))
-    payed_bill_id: Mapped[int] = mapped_column(ForeignKey("bill.id"))
-    merchant_category_code: Mapped[str]
-    txn_date: Mapped[datetime.date]
-    external_merchant_id: Mapped[str]
-    custom_merchant_name: Mapped[str]
-    original_merchant_name: Mapped[str]
+    account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)
+    payed_bill_id: Mapped[int] = mapped_column(Integer, ForeignKey("bill.id", ondelete="SET NULL"))
+    merchant_category_code: Mapped[str] = mapped_column(String(length=255))
+    txn_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    external_merchant_id: Mapped[str] = mapped_column(String(length=255))
+    custom_merchant_name: Mapped[str] = mapped_column(String(length=255))
+    original_merchant_name: Mapped[str] = mapped_column(String(length=255))
     merchant_url: Mapped[str] = mapped_column(Text)
-    custom_note: Mapped[str]
-    original_note: Mapped[str]
-    txn_source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(""))
-    soft_delete: Mapped[bool]
-    is_pending: Mapped[bool]
-    hash_and_daycount: Mapped[str]
-    source_metadata: Mapped[dict[str, Any]]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    custom_note: Mapped[str] = mapped_column(String(length=4096))
+    original_note: Mapped[str] = mapped_column(String(length=4096))
+    txn_source_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("txn_source.id", ondelete="SET NULL"))
+    soft_delete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    is_pending: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    hash_and_daycount: Mapped[str] = mapped_column(CHAR(length=67), nullable=False)
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Subtransaction(Base):
     __tablename__ = "subtransaction"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id"))
-    description: Mapped[str]
+    id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
+    txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False)
+    description: Mapped[str] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
-    category_id: Mapped[int] = mapped_column(ForeignKey("category.id"))
-    custom_note: Mapped[str]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)
+    custom_note: Mapped[str] = mapped_column(String(length=4096))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class TransactionTags(Base):
     __tablename__ = "txn_tags"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id"))
-    txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id"))
-    created_dt: Mapped[datetime.datetime]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id", ondelete="CASCADE"), nullable=False)
+    txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False)
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 class Budget(Base):
     __tablename__ = "budget"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    category_id: Mapped[int] = mapped_column(ForeignKey("category.id"))
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
-    effective_date: Mapped[datetime.date]
-    interval_id: Mapped[int] = mapped_column(ForeignKey("interval.id"), nullable=False, default=1)
-    show_always: Mapped[bool]
-    prorate: Mapped[bool]
-    created_dt: Mapped[datetime.datetime]
-    updated_dt: Mapped[datetime.datetime]
-
+    effective_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[datetime.date] = mapped_column(Date, nullable=True)
+    timespan_id: Mapped[int] = mapped_column(Integer, ForeignKey("timespan.id", ondelete="RESTRICT"), nullable=False)
+    show_always: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
+    prorate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

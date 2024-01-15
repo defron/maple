@@ -2,7 +2,8 @@ CREATE SCHEMA IF NOT EXISTS maple;
 
 CREATE TABLE IF NOT EXISTS maple.app (
 	id SERIAL PRIMARY KEY,
-	version VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(255) UNIQUE NOT NULL,
+	version VARCHAR(20) NOT NULL,
     app_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -11,8 +12,8 @@ CREATE TABLE IF NOT EXISTS maple.app (
 CREATE TABLE IF NOT EXISTS maple.user (
 	id SERIAL PRIMARY KEY,
 	username VARCHAR(30) UNIQUE NOT NULL,
-    first_name VARCHAR(255) UNIQUE NOT NULL,
-    last_name VARCHAR(255) UNIQUE NOT NULL,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     pass_hash TEXT NOT NULL,
     salt  CHAR(32) NOT NULL,
@@ -135,7 +136,7 @@ CREATE TABLE IF NOT EXISTS maple.historical_account_balance (
 
 CREATE TABLE IF NOT EXISTS maple.cashflow (
 	id SERIAL PRIMARY KEY,
-	account_id INT REFERENCES maple.account(id) ON DELETE CASCADE,
+	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	time_period DATE NOT NULL,
     inflow NUMERIC(14,4) NOT NULL DEFAULT 0,
     outflow NUMERIC(14,4) NOT NULL DEFAULT 0,
@@ -144,8 +145,8 @@ CREATE TABLE IF NOT EXISTS maple.cashflow (
 );
 
 CREATE TABLE IF NOT EXISTS maple.investment_purchase (
-	id SERIAL PRIMARY KEY,
-	account_id INT REFERENCES maple.account(id) ON DELETE CASCADE,
+	id BIGSERIAL PRIMARY KEY,
+	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	ticker VARCHAR(30) NOT NULL,
     purchase_date DATE NOT NULL,
     individual_purchase_price NUMERIC(11,4) NOT NULL,
@@ -155,8 +156,8 @@ CREATE TABLE IF NOT EXISTS maple.investment_purchase (
 );
 
 CREATE TABLE IF NOT EXISTS maple.investment_sale (
-	id SERIAL PRIMARY KEY,
-	investment_purchase_id INT REFERENCES maple.investment_purchase(id) ON DELETE CASCADE,
+	id BIGSERIAL PRIMARY KEY,
+	investment_purchase_id BIGINT NOT NULL REFERENCES maple.investment_purchase(id) ON DELETE CASCADE,
     sale_date DATE NOT NULL,
     individual_sale_price NUMERIC(11,4) NOT NULL,
     sale_quantity NUMERIC(11,4) NOT NULL,
@@ -166,11 +167,11 @@ CREATE TABLE IF NOT EXISTS maple.investment_sale (
 
 CREATE TABLE IF NOT EXISTS maple.account_txn_rule (
 	id SERIAL PRIMARY KEY,
-	account_id INT REFERENCES maple.account(id) ON DELETE CASCADE,
+	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	name VARCHAR(255) NOT NULL,
     new_category_id INT REFERENCES maple.category(id) ON DELETE CASCADE,
     additional_tag_id INT REFERENCES maple.tag(id) ON DELETE SET NULL,
-    is_active BOOLEAN DEFAULT TRUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     rule_json JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -181,7 +182,7 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
 	description VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
     account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
-    category_id INT NOT NULL DEFAULT 1 REFERENCES maple.category(id) ON DELETE SET DEFAULT,
+    category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,
     payed_bill_id INT REFERENCES maple.bill(id) ON DELETE SET NULL,
     merchant_category_code VARCHAR(255),
     txn_date DATE NOT NULL,
@@ -192,9 +193,9 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
     custom_note VARCHAR(4096),
     original_note VARCHAR(4096),
     txn_source_id uuid REFERENCES maple.txn_source(id) ON DELETE SET NULL,
-    soft_delete BOOLEAN DEFAULT FALSE,
-    is_pending BOOLEAN DEFAULT FALSE,
-    hash_and_daycount CHAR(67),
+    soft_delete BOOLEAN NOT NULL DEFAULT FALSE,
+    is_pending BOOLEAN NOT NULL DEFAULT FALSE,
+    hash_and_daycount CHAR(67) NOT NULL,
     source_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -205,7 +206,7 @@ CREATE TABLE IF NOT EXISTS maple.subtransaction (
     txn_id BIGINT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
     description VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
-    category_id INT NOT NULL DEFAULT 1 REFERENCES maple.category(id) ON DELETE SET DEFAULT,
+    category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,
     custom_note VARCHAR(4096),
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -220,13 +221,13 @@ CREATE TABLE IF NOT EXISTS maple.txn_tags (
 
 CREATE TABLE IF NOT EXISTS maple.budget (
 	id SERIAL PRIMARY KEY,
-    category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE CASCADE,
+    category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,
     amount NUMERIC(11,4) NOT NULL,
     effective_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    timespan_id INT NOT NULL DEFAULT 1 REFERENCES maple.timespan(id) ON DELETE SET DEFAULT,
-    show_always BOOLEAN DEFAULT TRUE,
-    prorate BOOLEAN DEFAULT FALSE,
+    end_date DATE,
+    timespan_id INT NOT NULL REFERENCES maple.timespan(id) ON DELETE RESTRICT,
+    show_always BOOLEAN NOT NULL DEFAULT TRUE,
+    prorate BOOLEAN NOT NULL DEFAULT FALSE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
