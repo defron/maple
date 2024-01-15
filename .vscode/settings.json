@@ -9,5 +9,14 @@
     "python.analysis.typeCheckingMode": "strict",
     "python.terminal.activateEnvInCurrentTerminal": false,
     "python.analysis.extraPaths": [],
-    "mypy.dmypyExecutable": "${workspaceFolder}/.venv/bin/dmypy"
+    "mypy.dmypyExecutable": "${workspaceFolder}/.venv/bin/dmypy",
+    "black-formatter.args": [
+        "--line-length",
+        "119"
+    ],
+    "[python]": {
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.formatOnSave": true
+    }
 }

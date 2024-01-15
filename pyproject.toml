@@ -29,3 +29,6 @@ lint = [
     "pylint>=3.0.3",
     "mypy>=1.8.0",
 ]
+
+[tool.black]
+line-length = 119

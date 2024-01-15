@@ -1,12 +1,10 @@
 import os
 from typing import Any, cast
-import datetime
 from collections.abc import AsyncGenerator, Sequence
 from uuid import UUID
 from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from litestar import Litestar, get
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.exceptions import ClientException, NotFoundException
@@ -65,6 +63,7 @@ def _default(val: Any) -> str:
         return str(val)
     raise TypeError()
 
+
 config = MapleConfig()
 
 # TODO: put these in a config
@@ -80,9 +79,7 @@ __engine = create_async_engine(
     poolclass=NullPool if config.db_pool_disable else None,
 )
 
-async_session_factory = async_sessionmaker(
-    __engine, expire_on_commit=False, class_=AsyncSession
-)
+async_session_factory = async_sessionmaker(__engine, expire_on_commit=False, class_=AsyncSession)
 
 
 @event.listens_for(__engine.sync_engine, "connect")
@@ -131,9 +128,7 @@ async def before_send_handler(message: Any, scope: Any) -> None:
         _:
         scope: ASGI scope
     """
-    session = cast(
-        "AsyncSession | None", get_litestar_scope_state(scope, SESSION_SCOPE_KEY)
-    )
+    session = cast("AsyncSession | None", get_litestar_scope_state(scope, SESSION_SCOPE_KEY))
     try:
         if session is not None and message["type"] == "http.response.start":
             if 200 <= message["status"] < 300:
