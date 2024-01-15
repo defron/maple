@@ -2,11 +2,10 @@ import datetime
 import decimal
 import uuid
 from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import Interval, BigInteger, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from typing import Any
+from typing import Any, List, Optional
 
 
 class Base(DeclarativeBase):
@@ -43,6 +42,7 @@ class TransactionSource(Base):
     has_api: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="transaction_source", lazy="noload")
 
 class TimeSpan(Base):
     __tablename__ = "timespan"
@@ -52,6 +52,8 @@ class TimeSpan(Base):
     allowed_for_budget: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", lazy="noload")
+    budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", lazy="noload")
 
 class AccountAuth(Base):
     __tablename__ = "acct_auth"
@@ -61,6 +63,7 @@ class AccountAuth(Base):
     external_reauth_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    accounts: Mapped[List["Account"]] = relationship(back_populates="authentication", lazy="noload")
 
 class Institution(Base):
     __tablename__ = "institution"
@@ -72,6 +75,7 @@ class Institution(Base):
     external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    accounts: Mapped[List["Account"]] = relationship(back_populates="institution", lazy="noload")
 
 class AccountType(Base):
     __tablename__ = "account_type"
@@ -80,6 +84,7 @@ class AccountType(Base):
     is_asset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    accounts: Mapped[List["Account"]] = relationship(back_populates="account_type", lazy="noload")
 
 class TransactionTag(Base):
     __tablename__ = "tag"
@@ -87,6 +92,13 @@ class TransactionTag(Base):
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    apply_via_transaction_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="apply_tag", lazy="noload")
+    transactions: Mapped[List["Transaction"]] = relationship(
+        secondary="txn_tags", back_populates="tags", lazy="noload"
+    )
+    transaction_associations: Mapped[List["TransactionTags"]] = relationship(
+        back_populates="transaction_tag", lazy="noload"
+    )
 
 class Category(Base):
     __tablename__ = "category"
@@ -97,6 +109,12 @@ class Category(Base):
     parent_category_id: Mapped[bool] = mapped_column(Integer, ForeignKey("category.id", ondelete="SET NULL"))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    parent_category: Mapped[Optional["Category"]] = relationship(back_populates="subcategories", remote_side=[id])
+    subcategories: Mapped[List["Category"]] = relationship(back_populates="parent_category")
+    change_category_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="new_category", lazy="noload")
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="category", lazy="noload")
+    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="category", lazy="noload")
+    budgets: Mapped[List["Budget"]] = relationship(back_populates="category", lazy="noload")
 
 class Account(Base):
     __tablename__ = "account"
@@ -117,6 +135,15 @@ class Account(Base):
     external_account_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    account_type: Mapped["AccountType"] = relationship(back_populates="accounts", lazy="noload")
+    institution: Mapped[Optional["Institution"]] = relationship(back_populates="accounts", lazy="noload")
+    authentication: Mapped[Optional["AccountAuth"]] = relationship(back_populates="accounts", lazy="noload")
+    bills: Mapped[List["Bill"]] = relationship(back_populates="account", lazy="noload")
+    historical_balances: Mapped[List["HistoricalAccountBalance"]] = relationship(back_populates="account", lazy="noload")
+    monthly_cashflows: Mapped[List["Cashflow"]] = relationship(back_populates="account", lazy="noload")
+    holdings: Mapped[List["InvestmentPurchase"]] = relationship(back_populates="account", lazy="noload")
+    transaction_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="account", lazy="noload")
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="account", lazy="noload")
 
 class Bill(Base):
     __tablename__ = "bill"
@@ -132,6 +159,9 @@ class Bill(Base):
     next_due_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    timespan: Mapped["TimeSpan"] = relationship(back_populates="bills", lazy="noload")
+    account: Mapped[Optional["Account"]] = relationship(back_populates="bills", lazy="noload")
+    paid_bill_transactions: Mapped[List["Transaction"]] = relationship(back_populates="paid_bill", lazy="noload")
 
 class HistoricalAccountBalance(Base):
     __tablename__ = "historical_account_balance"
@@ -141,6 +171,7 @@ class HistoricalAccountBalance(Base):
     balance: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    account: Mapped["Account"] = relationship(back_populates="historical_balances", lazy="noload")
 
 class Cashflow(Base):
     __tablename__ = "cashflow"
@@ -151,6 +182,7 @@ class Cashflow(Base):
     outflow: Mapped[decimal.Decimal] = mapped_column(Numeric(14,4), nullable=False, default=decimal.Decimal('0'), server_default=text("0"))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    account: Mapped["Account"] = relationship(back_populates="monthly_cashflows", lazy="noload")
 
 class InvestmentPurchase(Base):
     __tablename__ = "investment_purchase"
@@ -162,6 +194,8 @@ class InvestmentPurchase(Base):
     purchase_quantity: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    account: Mapped["Account"] = relationship(back_populates="holdings", lazy="noload")
+    sales: Mapped[List["InvestmentSale"]] = relationship(back_populates="associated_purchase", lazy="noload")
 
 class InvestmentSale(Base):
     __tablename__ = "investment_sale"
@@ -172,6 +206,7 @@ class InvestmentSale(Base):
     sale_quantity: Mapped[decimal.Decimal] = mapped_column(Numeric(11,4), nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    associated_purchase: Mapped["InvestmentPurchase"] = relationship(back_populates="sales", lazy="noload")
 
 class AccountTransactionRule(Base):
     __tablename__ = "account_txn_rule"
@@ -184,6 +219,9 @@ class AccountTransactionRule(Base):
     rule_json: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    new_category: Mapped[Optional["Category"]] = relationship(back_populates="change_category_rules", lazy="noload")
+    account: Mapped["Account"] = relationship(back_populates="transaction_rules", lazy="noload")
+    apply_tag: Mapped[Optional["TransactionTag"]] = relationship(back_populates="apply_via_transaction_rules", lazy="noload")
 
 class Transaction(Base):
     __tablename__ = "transaction"
@@ -208,6 +246,17 @@ class Transaction(Base):
     source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    account: Mapped["Account"] = relationship(back_populates="transactions", lazy="noload")
+    category: Mapped["Category"] = relationship(back_populates="transactions", lazy="noload")
+    paid_bill: Mapped[Optional["Bill"]] = relationship(back_populates="paid_bill_transactions", lazy="noload")
+    transaction_source: Mapped[Optional["TransactionSource"]] = relationship(back_populates="transactions", lazy="noload")
+    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="split_transaction", lazy="noload")
+    tags: Mapped[List["TransactionTag"]] = relationship(
+        secondary="txn_tags", back_populates="transactions", lazy="noload"
+    )
+    tag_associations: Mapped[List["TransactionTags"]] = relationship(
+        back_populates="transaction", lazy="noload"
+    )
 
 class Subtransaction(Base):
     __tablename__ = "subtransaction"
@@ -219,6 +268,8 @@ class Subtransaction(Base):
     custom_note: Mapped[str] = mapped_column(String(length=4096))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    category: Mapped["Category"] = relationship(back_populates="subtransactions", lazy="noload")
+    split_transaction: Mapped["Transaction"] = relationship(back_populates="subtransactions", lazy="noload")
 
 class TransactionTags(Base):
     __tablename__ = "txn_tags"
@@ -226,6 +277,8 @@ class TransactionTags(Base):
     tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id", ondelete="CASCADE"), nullable=False)
     txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    transaction_tag: Mapped["TransactionTag"] = relationship(back_populates="transaction_associations", lazy="noload")
+    transaction: Mapped["Transaction"] = relationship(back_populates="tag_associations", lazy="noload")
 
 class Budget(Base):
     __tablename__ = "budget"
@@ -239,3 +292,5 @@ class Budget(Base):
     prorate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     created_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    timespan: Mapped["TimeSpan"] = relationship(back_populates="budgets", lazy="noload")
+    category: Mapped["Category"] = relationship(back_populates="budgets", lazy="noload")
