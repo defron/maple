@@ -157,14 +157,14 @@ class Category(Base):
     updated_dt: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    parent_category: Mapped[Optional["Category"]] = relationship(back_populates="subcategories", remote_side=[id])
-    subcategories: Mapped[List["Category"]] = relationship(back_populates="parent_category")
+    parent_category: Mapped[Optional["Category"]] = relationship(back_populates="subcategories", remote_side=[id], info=dto_field("private"))
+    subcategories: Mapped[List["Category"]] = relationship(back_populates="parent_category", lazy="joined", viewonly=True)
     change_category_rules: Mapped[List["AccountTransactionRule"]] = relationship(
-        back_populates="new_category", lazy="noload"
+        back_populates="new_category", info=dto_field("private")
     )
-    transactions: Mapped[List["Transaction"]] = relationship(back_populates="category", lazy="noload")
-    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="category", lazy="noload")
-    budgets: Mapped[List["Budget"]] = relationship(back_populates="category", lazy="noload")
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="category", info=dto_field("private"))
+    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="category", info=dto_field("private"))
+    budgets: Mapped[List["Budget"]] = relationship(back_populates="category", info=dto_field("private"))
 
 
 class Account(Base):

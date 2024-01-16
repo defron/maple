@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from litestar import Litestar, get
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.exceptions import ClientException, NotFoundException
@@ -19,7 +20,7 @@ import msgspec
 from sqlalchemy import event
 
 from app.config import MapleConfig
-from app.dto.entities import AccountType
+from app.dto.entities import AccountType, Category
 
 
 async def provide_transaction(
@@ -45,6 +46,16 @@ async def select_account_types(session: AsyncSession) -> Sequence[AccountType] |
         return None
 
 
+async def select_categories(session: AsyncSession) -> Sequence[Category] | None:
+    query = select(Category).options(joinedload(Category.subcategories)).where(Category.parent_category_id.is_(None))
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
 @get("/")
 async def index() -> str:
     return "Hello, world!"
@@ -53,6 +64,14 @@ async def index() -> str:
 @get("/api/account-types", status_code=HTTP_200_OK)
 async def get_account_types(transaction: AsyncSession) -> Sequence[AccountType]:
     res = await select_account_types(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
+@get("/api/categories", status_code=HTTP_200_OK)
+async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
+    res = await select_categories(transaction)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -149,7 +168,7 @@ _db_config = SQLAlchemyAsyncConfig(
 )
 
 __app = Litestar(
-    [index, get_account_types],
+    [index, get_account_types, get_categories],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
 )
