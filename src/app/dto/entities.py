@@ -1,12 +1,13 @@
 import datetime
 import decimal
 import uuid
-from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.types import Interval, BigInteger, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Optional
+
 from litestar.dto import dto_field
+from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import BigInteger, Interval, Text
 
 
 class Base(DeclarativeBase):
@@ -71,8 +72,8 @@ class TimeSpan(Base):
     updated_dt: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", lazy="noload")
-    budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", lazy="noload")
+    bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", info=dto_field("private"))
+    budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", info=dto_field("private"))
 
 
 class AccountAuth(Base):

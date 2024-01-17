@@ -1,31 +1,25 @@
 import os
-from typing import Any, cast
 from collections.abc import AsyncGenerator, Sequence
+from typing import Any, cast
 from uuid import UUID
-from sqlalchemy import NullPool, select
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+
+import msgspec
 from litestar import Litestar, get
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
+from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.exceptions import ClientException, NotFoundException
-from litestar.status_codes import HTTP_409_CONFLICT, HTTP_200_OK
+from litestar.status_codes import HTTP_200_OK, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
-from litestar.contrib.sqlalchemy.plugins.init.config.common import (
-    SESSION_SCOPE_KEY,
-    SESSION_TERMINUS_ASGI_EVENTS,
-)
+from sqlalchemy import NullPool, event, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-import msgspec
-from sqlalchemy import event
+from sqlalchemy.orm import joinedload
 
 from app.config import MapleConfig
-from app.dto.entities import AccountType, Category
+from app.dto.entities import AccountType, Category, TimeSpan
 
 
-async def provide_transaction(
-    db_session: AsyncSession,
-) -> AsyncGenerator[AsyncSession, None]:
+async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
     try:
         async with db_session.begin():
             yield db_session
@@ -38,6 +32,16 @@ async def provide_transaction(
 
 async def select_account_types(session: AsyncSession) -> Sequence[AccountType] | None:
     query = select(AccountType)
+    try:
+        result = await session.execute(query)
+        return result.scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
+    query = select(TimeSpan)
     try:
         result = await session.execute(query)
         return result.scalars().all()
@@ -72,6 +76,14 @@ async def get_account_types(transaction: AsyncSession) -> Sequence[AccountType]:
 @get("/api/categories", status_code=HTTP_200_OK)
 async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
     res = await select_categories(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
+@get("/api/timespans", status_code=HTTP_200_OK)
+async def get_timespans(transaction: AsyncSession) -> Sequence[TimeSpan]:
+    res = await select_timespans(transaction)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -168,7 +180,7 @@ _db_config = SQLAlchemyAsyncConfig(
 )
 
 __app = Litestar(
-    [index, get_account_types, get_categories],
+    [index, get_account_types, get_categories, get_timespans],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
 )
