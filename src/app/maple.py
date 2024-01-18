@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import joinedload
 
 from app.config import MapleConfig
-from app.dto.entities import AccountType, Category, TimeSpan
+from app.dto.entities import AccountType, Category, TimeSpan, TransactionSource
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -39,7 +39,7 @@ async def select_account_types(session: AsyncSession) -> Sequence[AccountType] |
         print(e)
         return None
 
-
+# TODO: are these timespans translating correctly?
 async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
     query = select(TimeSpan)
     try:
@@ -52,6 +52,16 @@ async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
 
 async def select_categories(session: AsyncSession) -> Sequence[Category] | None:
     query = select(Category).options(joinedload(Category.subcategories)).where(Category.parent_category_id.is_(None))
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def select_sources(session: AsyncSession) -> Sequence[TransactionSource] | None:
+    query = select(TransactionSource)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -84,6 +94,14 @@ async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
 @get("/api/timespans", status_code=HTTP_200_OK)
 async def get_timespans(transaction: AsyncSession) -> Sequence[TimeSpan]:
     res = await select_timespans(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
+@get("/api/available-sources", status_code=HTTP_200_OK)
+async def get_available_sources(transaction: AsyncSession) -> Sequence[TransactionSource]:
+    res = await select_sources(transaction)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -180,7 +198,7 @@ _db_config = SQLAlchemyAsyncConfig(
 )
 
 __app = Litestar(
-    [index, get_account_types, get_categories, get_timespans],
+    [index, get_account_types, get_categories, get_timespans, get_available_sources],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
 )

@@ -57,7 +57,7 @@ class TransactionSource(Base):
     updated_dt: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    transactions: Mapped[List["Transaction"]] = relationship(back_populates="transaction_source", lazy="noload")
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates="transaction_source", lazy="noload", info=dto_field("private"))
 
 
 class TimeSpan(Base):
