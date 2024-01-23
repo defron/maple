@@ -4,20 +4,24 @@ from typing import Any, cast
 from uuid import UUID
 
 import msgspec
-from litestar import Litestar, get
+from litestar import Litestar, get, post
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.exceptions import ClientException, NotFoundException
 from litestar.status_codes import HTTP_200_OK, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
-from sqlalchemy import NullPool, event, select
+from sqlalchemy import NullPool, event, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
+from litestar.di import Provide
 
 from app.config import MapleConfig
-from app.dto.entities import AccountType, Category, TimeSpan, TransactionSource
+from app.dto.entities import AccountType, Category, Institution, InstitutionRequestModel, InstitutionRepository, InstitutionResponseModel, TimeSpan, TransactionSource
 
+async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
+    """This provides the default Institutions repository."""
+    return InstitutionRepository(session=db_session)
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
     try:
@@ -105,6 +109,16 @@ async def get_available_sources(transaction: AsyncSession) -> Sequence[Transacti
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
+
+@post("/api/institutions", sync_to_thread=False, dependencies={"institution_repo": Provide(provide_institution_repo)})
+async def create_institution(
+    institution_repo: InstitutionRepository,
+    data: InstitutionRequestModel) -> InstitutionResponseModel:
+        obj = await institution_repo.add(
+            Institution(**data.model_dump(exclude_unset=True, exclude_none=True)),
+        )
+        await institution_repo.session.commit()
+        return InstitutionResponseModel.model_validate(obj)
 
 
 def _default(val: Any) -> str:
@@ -198,7 +212,7 @@ _db_config = SQLAlchemyAsyncConfig(
 )
 
 __app = Litestar(
-    [index, get_account_types, get_categories, get_timespans, get_available_sources],
+    [index, get_account_types, get_categories, get_timespans, get_available_sources, create_institution],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
 )

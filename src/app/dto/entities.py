@@ -3,19 +3,29 @@ import decimal
 import uuid
 from typing import Any, List, Optional
 
+from advanced_alchemy import SQLAlchemyAsyncRepository
+from advanced_alchemy.base import CommonTableAttributes
+from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO
 from litestar.dto import dto_field
+from pydantic import BaseModel as _BaseModel
 from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import BigInteger, Interval, Text
 
 
-class Base(DeclarativeBase):
+class Base(CommonTableAttributes, DeclarativeBase):
     type_annotation_map = {dict[str, Any]: JSONB}
 
 
+class BaseModel(_BaseModel):
+    """Extend Pydantic's BaseModel to enable ORM mode"""
+
+    model_config = {"from_attributes": True}
+
+
 class App(Base):
-    __tablename__ = "app"
+    __tablename__ = "app"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     version: Mapped[str] = mapped_column(String(length=20), nullable=False)
@@ -29,7 +39,7 @@ class App(Base):
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "user"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     username: Mapped[str] = mapped_column(String(length=30), unique=True, nullable=False)
     first_name: Mapped[str] = mapped_column(String(length=255), nullable=False)
@@ -47,7 +57,7 @@ class User(Base):
 
 
 class TransactionSource(Base):
-    __tablename__ = "txn_source"
+    __tablename__ = "txn_source"  #  type: ignore[assignment]
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     has_api: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -57,27 +67,29 @@ class TransactionSource(Base):
     updated_dt: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    transactions: Mapped[List["Transaction"]] = relationship(back_populates="transaction_source", lazy="noload", info=dto_field("private"))
+    transactions: Mapped[List["Transaction"]] = relationship(
+        back_populates="transaction_source", lazy="noload", info=dto_field("private")
+    )
 
 
 class TimeSpan(Base):
-    __tablename__ = "timespan"
-    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    __tablename__ = "timespan"  #  type: ignore[assignment]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True, info=dto_field("read-only"))
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     span: Mapped[datetime.timedelta] = mapped_column(Interval, nullable=False)
     allowed_for_budget: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_dt: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
     updated_dt: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
     bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", info=dto_field("private"))
     budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", info=dto_field("private"))
 
 
 class AccountAuth(Base):
-    __tablename__ = "acct_auth"
+    __tablename__ = "acct_auth"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     external_auth_id: Mapped[str] = mapped_column(String(length=255))
     external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
@@ -94,20 +106,48 @@ class AccountAuth(Base):
 
 
 class Institution(Base):
-    __tablename__ = "institution"
-    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    __tablename__ = "institution"  #  type: ignore[assignment]
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True, info=dto_field("read-only"))
     name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     logo: Mapped[str] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text)
     external_institution_id: Mapped[str] = mapped_column(String(length=255))
     external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
     updated_dt: Mapped[datetime.datetime] = mapped_column(
-        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
+        DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
-    accounts: Mapped[List["Account"]] = relationship(back_populates="institution", lazy="noload")
+    accounts: Mapped[List["Account"]] = relationship(back_populates="institution", info=dto_field("private"))
+
+
+InstitutionDTO = SQLAlchemyDTO[Institution]
+
+
+class InstitutionRequestModel(BaseModel):
+    name: str
+    logo: str | None
+    url: str | None
+    external_institution_id: str | None
+    external_source_metadata: dict[str, Any] | None
+
+
+class InstitutionResponseModel(BaseModel):
+    id: int
+    name: str
+    logo: str | None
+    url: str | None
+    external_institution_id: str | None
+    external_source_metadata: dict[str, Any] | None
+    created_dt: datetime.datetime
+    updated_dt: datetime.datetime
+
+
+class InstitutionRepository(SQLAlchemyAsyncRepository[Institution]):
+    """Instittuion repository."""
+
+    model_type = Institution
 
 
 class AccountType(Base):
@@ -158,13 +198,19 @@ class Category(Base):
     updated_dt: Mapped[datetime.datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP")
     )
-    parent_category: Mapped[Optional["Category"]] = relationship(back_populates="subcategories", remote_side=[id], info=dto_field("private"))
-    subcategories: Mapped[List["Category"]] = relationship(back_populates="parent_category", lazy="joined", viewonly=True)
+    parent_category: Mapped[Optional["Category"]] = relationship(
+        back_populates="subcategories", remote_side=[id], info=dto_field("private")
+    )
+    subcategories: Mapped[List["Category"]] = relationship(
+        back_populates="parent_category", lazy="joined", viewonly=True
+    )
     change_category_rules: Mapped[List["AccountTransactionRule"]] = relationship(
         back_populates="new_category", info=dto_field("private")
     )
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="category", info=dto_field("private"))
-    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="category", info=dto_field("private"))
+    subtransactions: Mapped[List["Subtransaction"]] = relationship(
+        back_populates="category", info=dto_field("private")
+    )
     budgets: Mapped[List["Budget"]] = relationship(back_populates="category", info=dto_field("private"))
 
 
