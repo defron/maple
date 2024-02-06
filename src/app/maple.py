@@ -3,25 +3,35 @@ from collections.abc import AsyncGenerator, Sequence
 from typing import Any, cast
 from uuid import UUID
 
-import msgspec
 from litestar import Litestar, get, post
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
+from litestar.di import Provide
 from litestar.exceptions import ClientException, NotFoundException
 from litestar.status_codes import HTTP_200_OK, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
-from sqlalchemy import NullPool, event, insert, select
+from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
-from litestar.di import Provide
 
 from app.config import MapleConfig
-from app.dto.entities import AccountType, Category, Institution, InstitutionRequestModel, InstitutionRepository, InstitutionResponseModel, TimeSpan, TransactionSource
+from app.dto.entities import (
+    AccountType,
+    Category,
+    Institution,
+    InstitutionRepository,
+    InstitutionRequestModel,
+    InstitutionResponseModel,
+    TimeSpan,
+    TransactionSource,
+)
+
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
     """This provides the default Institutions repository."""
     return InstitutionRepository(session=db_session)
+
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
     try:
@@ -42,6 +52,7 @@ async def select_account_types(session: AsyncSession) -> Sequence[AccountType] |
     except Exception as e:
         print(e)
         return None
+
 
 # TODO: are these timespans translating correctly?
 async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
@@ -66,6 +77,16 @@ async def select_categories(session: AsyncSession) -> Sequence[Category] | None:
 
 async def select_sources(session: AsyncSession) -> Sequence[TransactionSource] | None:
     query = select(TransactionSource)
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def select_institutions(session: AsyncSession) -> Sequence[Institution] | None:
+    query = select(Institution)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -110,15 +131,24 @@ async def get_available_sources(transaction: AsyncSession) -> Sequence[Transacti
         raise NotFoundException(detail="No data found")
     return res
 
+
+@get("/api/institutions", status_code=HTTP_200_OK)
+async def get_institutions(transaction: AsyncSession) -> Sequence[Institution]:
+    res = await select_institutions(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
 @post("/api/institutions", sync_to_thread=False, dependencies={"institution_repo": Provide(provide_institution_repo)})
 async def create_institution(
-    institution_repo: InstitutionRepository,
-    data: InstitutionRequestModel) -> InstitutionResponseModel:
-        obj = await institution_repo.add(
-            Institution(**data.model_dump(exclude_unset=True, exclude_none=True)),
-        )
-        await institution_repo.session.commit()
-        return InstitutionResponseModel.model_validate(obj)
+    institution_repo: InstitutionRepository, data: InstitutionRequestModel
+) -> InstitutionResponseModel:
+    obj = await institution_repo.add(
+        Institution(**data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await institution_repo.session.commit()
+    return InstitutionResponseModel.model_validate(obj)
 
 
 def _default(val: Any) -> str:
@@ -135,7 +165,7 @@ __engine = create_async_engine(
     connect_args={"server_settings": dict(search_path=config.db_search_schema)},
     echo=config.db_echo,
     echo_pool=config.db_echo_pool,
-    json_serializer=msgspec.json.Encoder(enc_hook=_default),
+    # json_serializer=msgspec.json.Encoder(enc_hook=_default),
     max_overflow=config.db_max_oveflow,
     pool_size=config.db_pool_size,
     pool_timeout=config.db_pool_timeout,
@@ -145,41 +175,41 @@ __engine = create_async_engine(
 async_session_factory = async_sessionmaker(__engine, expire_on_commit=False, class_=AsyncSession)
 
 
-@event.listens_for(__engine.sync_engine, "connect")
-def sqla_on_connect(dbapi_connection: Any, _: Any) -> Any:
-    """Using orjson for serialization of the json column values means that the
-    output is binary, not `str` like `json.dumps` would output.
+# @event.listens_for(__engine.sync_engine, "connect")
+# def sqla_on_connect(dbapi_connection: Any, _: Any) -> Any:
+#     """Using orjson for serialization of the json column values means that the
+#     output is binary, not `str` like `json.dumps` would output.
 
-    SQLAlchemy expects that the json serializer returns `str` and calls
-    `.encode()` on the value to turn it to bytes before writing to the
-    JSONB column. I'd need to either wrap `orjson.dumps` to return a
-    `str` so that SQLAlchemy could then convert it to binary, or do the
-    following, which changes the behaviour of the dialect to expect a
-    binary value from the serializer.
+#     SQLAlchemy expects that the json serializer returns `str` and calls
+#     `.encode()` on the value to turn it to bytes before writing to the
+#     JSONB column. I'd need to either wrap `orjson.dumps` to return a
+#     `str` so that SQLAlchemy could then convert it to binary, or do the
+#     following, which changes the behaviour of the dialect to expect a
+#     binary value from the serializer.
 
-    See Also:
-    https://github.com/sqlalchemy/sqlalchemy/blob/14bfbadfdf9260a1c40f63b31641b27fe9de12a0/lib/sqlalchemy/dialects/postgresql/asyncpg.py#L934
-    """
+#     See Also:
+#     https://github.com/sqlalchemy/sqlalchemy/blob/14bfbadfdf9260a1c40f63b31641b27fe9de12a0/lib/sqlalchemy/dialects/postgresql/asyncpg.py#L934
+#     """
 
-    def encoder(bin_value: bytes) -> bytes:
-        # \x01 is the prefix for jsonb used by PostgreSQL.
-        # asyncpg requires it when format='binary'
-        return b"\x01" + bin_value
+#     def encoder(bin_value: bytes) -> bytes:
+#         # \x01 is the prefix for jsonb used by PostgreSQL.
+#         # asyncpg requires it when format='binary'
+#         return b"\x01" + bin_value
 
-    def decoder(bin_value: bytes) -> Any:
-        # the byte is the \x01 prefix for jsonb used by PostgreSQL.
-        # asyncpg returns it when format='binary'
-        return msgspec.json.decode(bin_value[1:])
+#     def decoder(bin_value: bytes) -> Any:
+#         # the byte is the \x01 prefix for jsonb used by PostgreSQL.
+#         # asyncpg returns it when format='binary'
+#         return msgspec.json.decode(bin_value[1:])
 
-    dbapi_connection.await_(
-        dbapi_connection.driver_connection.set_type_codec(
-            "jsonb",
-            encoder=encoder,
-            decoder=decoder,
-            schema="pg_catalog",
-            format="binary",
-        )
-    )
+#     dbapi_connection.await_(
+#         dbapi_connection.driver_connection.set_type_codec(
+#             "jsonb",
+#             encoder=encoder,
+#             decoder=decoder,
+#             schema="pg_catalog",
+#             format="binary",
+#         )
+#     )
 
 
 async def before_send_handler(message: Any, scope: Any) -> None:
@@ -212,7 +242,15 @@ _db_config = SQLAlchemyAsyncConfig(
 )
 
 __app = Litestar(
-    [index, get_account_types, get_categories, get_timespans, get_available_sources, create_institution],
+    [
+        index,
+        get_account_types,
+        get_categories,
+        get_timespans,
+        get_available_sources,
+        get_institutions,
+        create_institution,
+    ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
 )

@@ -1,7 +1,7 @@
 CREATE SCHEMA IF NOT EXISTS maple;
 
 CREATE TABLE IF NOT EXISTS maple.app (
-	id SERIAL PRIMARY KEY,
+	id uuid PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
 	version VARCHAR(20) NOT NULL,
     app_metadata JSONB,
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS maple.app (
 );
 
 CREATE TABLE IF NOT EXISTS maple.user (
-	id SERIAL PRIMARY KEY,
+	id uuid PRIMARY KEY,
 	username VARCHAR(30) UNIQUE NOT NULL,
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS maple.txn_source (
 );
 
 CREATE TABLE IF NOT EXISTS maple.timespan (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) UNIQUE NOT NULL,
     span INTERVAL NOT NULL,
     allowed_for_budget BOOLEAN NOT NULL,
@@ -43,7 +43,7 @@ INSERT INTO maple.timespan (id, name, span, allowed_for_budget)
     VALUES (1, 'Monthly', '1 month', TRUE);
 
 CREATE TABLE IF NOT EXISTS maple.acct_auth (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	external_auth_id VARCHAR(255),
     external_source_metadata JSONB,
     external_reauth_required BOOLEAN NOT NULL DEFAULT FALSE,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS maple.acct_auth (
 );
 
 CREATE TABLE IF NOT EXISTS maple.institution (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) NOT NULL,
     logo TEXT,
     url TEXT,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS maple.institution (
 );
 
 CREATE TABLE IF NOT EXISTS maple.account_type (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) NOT NULL UNIQUE,
     is_asset BOOLEAN NOT NULL DEFAULT TRUE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -71,14 +71,14 @@ CREATE TABLE IF NOT EXISTS maple.account_type (
 );
 
 CREATE TABLE IF NOT EXISTS maple.tag (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) NOT NULL UNIQUE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS maple.category (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(128) UNIQUE NOT NULL,
     logo TEXT,
     is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
@@ -91,7 +91,7 @@ INSERT INTO maple.category (id, name, parent_category_id)
     VALUES (1, 'Uncategorized', NULL);
 
 CREATE TABLE IF NOT EXISTS maple.account (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) NOT NULL,
     account_type_id INT NOT NULL REFERENCES maple.account_type(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS maple.account (
 );
 
 CREATE TABLE IF NOT EXISTS maple.bill (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(255) NOT NULL,
     url TEXT,
     timespan_id INT NOT NULL REFERENCES maple.timespan(id) ON DELETE CASCADE,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS maple.bill (
 );
 
 CREATE TABLE IF NOT EXISTS maple.historical_account_balance (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	account_id INT REFERENCES maple.account(id) ON DELETE CASCADE,
 	balance_date DATE NOT NULL DEFAULT CURRENT_DATE,
     balance NUMERIC(14,4) NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS maple.historical_account_balance (
 );
 
 CREATE TABLE IF NOT EXISTS maple.cashflow (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	time_period DATE NOT NULL,
     inflow NUMERIC(14,4) NOT NULL DEFAULT 0,
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS maple.investment_sale (
 );
 
 CREATE TABLE IF NOT EXISTS maple.account_txn_rule (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
 	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	name VARCHAR(255) NOT NULL,
     new_category_id INT REFERENCES maple.category(id) ON DELETE CASCADE,
@@ -213,14 +213,14 @@ CREATE TABLE IF NOT EXISTS maple.subtransaction (
 );
 
 CREATE TABLE IF NOT EXISTS maple.txn_tags (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
     tag_id INT NOT NULL REFERENCES maple.tag(id) ON DELETE CASCADE,
     txn_id BIGINT NOT NULL REFERENCES maple.transaction(id) ON DELETE CASCADE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS maple.budget (
-	id SERIAL PRIMARY KEY,
+	id BIGSERIAL PRIMARY KEY,
     category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,
     amount NUMERIC(11,4) NOT NULL,
     effective_date DATE NOT NULL,

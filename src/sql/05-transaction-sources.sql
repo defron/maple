@@ -7,6 +7,9 @@ INSERT INTO maple.txn_source (id, name, has_api)
 INSERT INTO maple.txn_source (id, name, has_api)
     VALUES ('649e21e3-0c57-4f05-8231-2c6854ab9e5c'::UUID, 'SimpleFin-Bridge', TRUE);
 
+INSERT INTO maple.txn_source (id, name, has_api)
+    VALUES ('74f21da5-5bf9-485d-a934-7a9509aa18a8'::UUID, 'Manual', FALSE)
+
 /* TODO: Implementation feasibility
 
 INSERT INTO maple.txn_source (id, name, has_api)
