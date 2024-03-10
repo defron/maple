@@ -3,12 +3,12 @@ from collections.abc import AsyncGenerator, Sequence
 from typing import Any, cast
 
 from advanced_alchemy import ConflictError
-from litestar import Litestar, get, post
+from litestar import Litestar, delete, get, post
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
 from litestar.exceptions import ClientException, HTTPException, NotFoundException
-from litestar.status_codes import HTTP_200_OK, HTTP_409_CONFLICT
+from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
@@ -159,7 +159,7 @@ async def get_institutions(transaction: AsyncSession) -> Sequence[Institution]:
     return res
 
 
-@post("/api/institutions", sync_to_thread=False, dependencies={"institution_repo": Provide(provide_institution_repo)})
+@post("/api/institutions", dependencies={"institution_repo": Provide(provide_institution_repo)})
 async def create_institution(
     institution_repo: InstitutionRepository, data: InstitutionRequestModel
 ) -> InstitutionResponseModel:
@@ -178,7 +178,7 @@ async def get_tags(transaction: AsyncSession) -> Sequence[TransactionTag]:
     return res
 
 
-@post("/api/tags", sync_to_thread=False, dependencies={"tag_repo": Provide(provide_tag_repo)})
+@post("/api/tags", dependencies={"tag_repo": Provide(provide_tag_repo)})
 async def create_tag(tag_repo: TagRepository, data: list[TagRequestModel]) -> list[TagResponseModel]:
     try:
         objs = await tag_repo.add_many(
@@ -189,6 +189,15 @@ async def create_tag(tag_repo: TagRepository, data: list[TagRequestModel]) -> li
     except ConflictError as e:
         print(e)
         raise HTTPException(status_code=HTTP_409_CONFLICT, detail="At least one tag already exists")
+
+
+@delete("/api/tags/{id:int}", status_code=HTTP_204_NO_CONTENT, dependencies={"tag_repo": Provide(provide_tag_repo)})
+async def delete_tag(tag_repo: TagRepository, id: int) -> None:
+    obj = await tag_repo.delete(id)  # type: ignore
+    if obj.id == id:
+        await tag_repo.session.commit()
+        return None
+    raise NotFoundException(detail="No data found")
 
 
 config = MapleConfig()
@@ -249,6 +258,7 @@ __app = Litestar(
         create_institution,
         get_tags,
         create_tag,
+        delete_tag,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
