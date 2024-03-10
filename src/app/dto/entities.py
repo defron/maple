@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import BigInteger, Interval, Text
 
+
 class Base(CommonTableAttributes, DeclarativeBase):
     registry = orm_registry
 
@@ -164,10 +165,10 @@ class TransactionTag(Base):
         back_populates="apply_tag", lazy="noload"
     )
     transactions: Mapped[List["Transaction"]] = relationship(
-        secondary="txn_tags", back_populates="tags", lazy="noload", info=dto_field("private")
+        secondary="txn_tags", back_populates="tags", lazy="noload", viewonly=True, info=dto_field("private")
     )
     transaction_associations: Mapped[List["TransactionTags"]] = relationship(
-        back_populates="transaction_tag", lazy="noload", info=dto_field("private")
+        back_populates="transaction_tag", lazy="noload", viewonly=True, info=dto_field("private")
     )
 
 
@@ -363,7 +364,9 @@ class Transaction(Base):
     tags: Mapped[List["TransactionTag"]] = relationship(
         secondary="txn_tags", back_populates="transactions", lazy="noload"
     )
-    tag_associations: Mapped[List["TransactionTags"]] = relationship(back_populates="transaction", lazy="noload")
+    tag_associations: Mapped[List["TransactionTags"]] = relationship(
+        back_populates="transaction", viewonly=True, lazy="noload"
+    )
 
 
 class Subtransaction(Base):
@@ -386,8 +389,10 @@ class TransactionTags(Base):
     tag_id: Mapped[int] = mapped_column(ForeignKey("tag.id", ondelete="CASCADE"), nullable=False)
     txn_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transaction.id", ondelete="CASCADE"), nullable=False)
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    transaction_tag: Mapped["TransactionTag"] = relationship(back_populates="transaction_associations", lazy="noload")
-    transaction: Mapped["Transaction"] = relationship(back_populates="tag_associations", lazy="noload")
+    transaction_tag: Mapped["TransactionTag"] = relationship(
+        back_populates="transaction_associations", viewonly=True, lazy="noload"
+    )
+    transaction: Mapped["Transaction"] = relationship(back_populates="tag_associations", viewonly=True, lazy="noload")
 
 
 class Budget(Base):
