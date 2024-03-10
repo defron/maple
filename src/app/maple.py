@@ -1,7 +1,6 @@
 import os
 from collections.abc import AsyncGenerator, Sequence
 from typing import Any, cast
-from uuid import UUID
 
 from litestar import Litestar, get, post
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
@@ -23,14 +22,23 @@ from app.dto.entities import (
     InstitutionRepository,
     InstitutionRequestModel,
     InstitutionResponseModel,
+    TagRepository,
+    TagRequestModel,
+    TagResponseModel,
     TimeSpan,
     TransactionSource,
+    TransactionTag,
 )
 
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
     """This provides the default Institutions repository."""
     return InstitutionRepository(session=db_session)
+
+
+async def provide_tag_repo(db_session: AsyncSession) -> TagRepository:
+    """This provides the default Institutions repository."""
+    return TagRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -95,6 +103,16 @@ async def select_institutions(session: AsyncSession) -> Sequence[Institution] | 
         return None
 
 
+async def select_tags(session: AsyncSession) -> Sequence[TransactionTag] | None:
+    query = select(TransactionTag)
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
 @get("/")
 async def index() -> str:
     return "Hello, world!"
@@ -151,10 +169,21 @@ async def create_institution(
     return InstitutionResponseModel.model_validate(obj)
 
 
-def _default(val: Any) -> str:
-    if isinstance(val, UUID):
-        return str(val)
-    raise TypeError()
+@get("/api/tags", status_code=HTTP_200_OK)
+async def get_tags(transaction: AsyncSession) -> Sequence[TransactionTag]:
+    res = await select_tags(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
+@post("/api/tags", sync_to_thread=False, dependencies={"tag_repo": Provide(provide_tag_repo)})
+async def create_tag(tag_repo: TagRepository, data: TagRequestModel) -> TagResponseModel:
+    obj = await tag_repo.add(
+        TransactionTag(**data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await tag_repo.session.commit()
+    return TagResponseModel.model_validate(obj)
 
 
 config = MapleConfig()
@@ -173,43 +202,6 @@ __engine = create_async_engine(
 )
 
 async_session_factory = async_sessionmaker(__engine, expire_on_commit=False, class_=AsyncSession)
-
-
-# @event.listens_for(__engine.sync_engine, "connect")
-# def sqla_on_connect(dbapi_connection: Any, _: Any) -> Any:
-#     """Using orjson for serialization of the json column values means that the
-#     output is binary, not `str` like `json.dumps` would output.
-
-#     SQLAlchemy expects that the json serializer returns `str` and calls
-#     `.encode()` on the value to turn it to bytes before writing to the
-#     JSONB column. I'd need to either wrap `orjson.dumps` to return a
-#     `str` so that SQLAlchemy could then convert it to binary, or do the
-#     following, which changes the behaviour of the dialect to expect a
-#     binary value from the serializer.
-
-#     See Also:
-#     https://github.com/sqlalchemy/sqlalchemy/blob/14bfbadfdf9260a1c40f63b31641b27fe9de12a0/lib/sqlalchemy/dialects/postgresql/asyncpg.py#L934
-#     """
-
-#     def encoder(bin_value: bytes) -> bytes:
-#         # \x01 is the prefix for jsonb used by PostgreSQL.
-#         # asyncpg requires it when format='binary'
-#         return b"\x01" + bin_value
-
-#     def decoder(bin_value: bytes) -> Any:
-#         # the byte is the \x01 prefix for jsonb used by PostgreSQL.
-#         # asyncpg returns it when format='binary'
-#         return msgspec.json.decode(bin_value[1:])
-
-#     dbapi_connection.await_(
-#         dbapi_connection.driver_connection.set_type_codec(
-#             "jsonb",
-#             encoder=encoder,
-#             decoder=decoder,
-#             schema="pg_catalog",
-#             format="binary",
-#         )
-#     )
 
 
 async def before_send_handler(message: Any, scope: Any) -> None:
@@ -250,6 +242,8 @@ __app = Litestar(
         get_available_sources,
         get_institutions,
         create_institution,
+        get_tags,
+        create_tag,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

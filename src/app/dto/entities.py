@@ -144,6 +144,15 @@ class InstitutionResponseModel(BaseModel):
     created_dt: datetime
     updated_dt: datetime
 
+class TagRequestModel(BaseModel):
+    name: str
+
+
+class TagResponseModel(BaseModel):
+    id: int
+    name: str
+    created_dt: datetime
+    updated_dt: datetime
 
 class InstitutionRepository(SQLAlchemyAsyncRepository[Institution]):
     """Instittuion repository."""
@@ -177,6 +186,10 @@ class TransactionTag(Base):
         back_populates="transaction_tag", lazy="noload"
     )
 
+class TagRepository(SQLAlchemyAsyncRepository[TransactionTag]):
+    """Tag repository."""
+
+    model_type = TransactionTag
 
 class Category(Base):
     __tablename__ = "category"  #  type: ignore[assignment]
