@@ -2,11 +2,12 @@ import os
 from collections.abc import AsyncGenerator, Sequence
 from typing import Any, cast
 
+from advanced_alchemy import ConflictError
 from litestar import Litestar, get, post
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
-from litestar.exceptions import ClientException, NotFoundException
+from litestar.exceptions import ClientException, HTTPException, NotFoundException
 from litestar.status_codes import HTTP_200_OK, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, select
@@ -178,12 +179,16 @@ async def get_tags(transaction: AsyncSession) -> Sequence[TransactionTag]:
 
 
 @post("/api/tags", sync_to_thread=False, dependencies={"tag_repo": Provide(provide_tag_repo)})
-async def create_tag(tag_repo: TagRepository, data: TagRequestModel) -> TagResponseModel:
-    obj = await tag_repo.add(
-        TransactionTag(**data.model_dump(exclude_unset=True, exclude_none=True)),
-    )
-    await tag_repo.session.commit()
-    return TagResponseModel.model_validate(obj)
+async def create_tag(tag_repo: TagRepository, data: list[TagRequestModel]) -> list[TagResponseModel]:
+    try:
+        objs = await tag_repo.add_many(
+            [TransactionTag(**raw_obj.model_dump(exclude_unset=True, exclude_none=True)) for raw_obj in data]
+        )
+        await tag_repo.session.commit()
+        return [TagResponseModel.model_validate(obj) for obj in objs]
+    except ConflictError as e:
+        print(e)
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail="At least one tag already exists")
 
 
 config = MapleConfig()
