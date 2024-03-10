@@ -1,36 +1,17 @@
-import contextlib
 import decimal
 import uuid
 from datetime import date, datetime, timedelta
 from typing import Any, List, Optional
 
 from advanced_alchemy import SQLAlchemyAsyncRepository
-from advanced_alchemy.base import CommonTableAttributes, convention, orm_registry
-from advanced_alchemy.types import GUID, DateTimeUTC
+from advanced_alchemy.base import CommonTableAttributes, orm_registry
 from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO
 from litestar.dto import dto_field
 from pydantic import BaseModel as _BaseModel
-from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, MetaData, Numeric, String, text
+from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, registry, relationship
-from sqlalchemy.types import BigInteger, Interval, Text, TypeEngine
-
-
-def create_registry() -> registry:
-    """Create a new SQLAlchemy registry."""
-    meta = MetaData(naming_convention=convention)
-    type_annotation_map: dict[type, type[TypeEngine[Any]] | TypeEngine[Any]] = {
-        uuid.UUID: GUID,
-        datetime: DateTimeUTC,
-        date: Date,
-        dict[str, Any]: JSONB,
-    }
-    with contextlib.suppress(ImportError):
-        from pydantic import AnyHttpUrl, AnyUrl, EmailStr
-
-        type_annotation_map.update({EmailStr: String, AnyUrl: String, AnyHttpUrl: String})
-    return registry(metadata=meta, type_annotation_map=type_annotation_map)
-
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import BigInteger, Interval, Text
 
 class Base(CommonTableAttributes, DeclarativeBase):
     registry = orm_registry
