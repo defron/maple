@@ -38,6 +38,7 @@ class Base(CommonTableAttributes, DeclarativeBase):
 
 class BaseModel(_BaseModel):
     """Extend Pydantic's BaseModel to enable ORM mode"""
+
     model_config = {"from_attributes": True}
 
 
@@ -144,6 +145,7 @@ class InstitutionResponseModel(BaseModel):
     created_dt: datetime
     updated_dt: datetime
 
+
 class TagRequestModel(BaseModel):
     name: str
 
@@ -153,6 +155,7 @@ class TagResponseModel(BaseModel):
     name: str
     created_dt: datetime
     updated_dt: datetime
+
 
 class InstitutionRepository(SQLAlchemyAsyncRepository[Institution]):
     """Instittuion repository."""
@@ -180,16 +183,18 @@ class TransactionTag(Base):
         back_populates="apply_tag", lazy="noload"
     )
     transactions: Mapped[List["Transaction"]] = relationship(
-        secondary="txn_tags", back_populates="tags", lazy="noload"
+        secondary="txn_tags", back_populates="tags", lazy="noload", info=dto_field("private")
     )
     transaction_associations: Mapped[List["TransactionTags"]] = relationship(
-        back_populates="transaction_tag", lazy="noload"
+        back_populates="transaction_tag", lazy="noload", info=dto_field("private")
     )
+
 
 class TagRepository(SQLAlchemyAsyncRepository[TransactionTag]):
     """Tag repository."""
 
     model_type = TransactionTag
+
 
 class Category(Base):
     __tablename__ = "category"  #  type: ignore[assignment]
