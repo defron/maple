@@ -128,6 +128,23 @@ class InstitutionResponseModel(BaseModel):
     updated_dt: datetime
 
 
+class CategoryRequestModel(BaseModel):
+    name: str
+    logo: str | None
+    is_hidden: bool
+    parent_category_id: int | None
+
+
+class CategoryResponseModel(BaseModel):
+    id: int
+    name: str
+    logo: str | None
+    is_hidden: bool
+    parent_category_id: int | None
+    created_dt: datetime
+    updated_dt: datetime
+
+
 class TagRequestModel(BaseModel):
     name: str
 
@@ -201,6 +218,12 @@ class Category(Base):
         back_populates="category", info=dto_field("private")
     )
     budgets: Mapped[List["Budget"]] = relationship(back_populates="category", info=dto_field("private"))
+
+
+class CategoryRepository(SQLAlchemyAsyncRepository[Category]):
+    """Tag repository."""
+
+    model_type = Category
 
 
 class Account(Base):

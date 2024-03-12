@@ -19,6 +19,9 @@ from app.config import MapleConfig
 from app.dto.entities import (
     AccountType,
     Category,
+    CategoryRepository,
+    CategoryRequestModel,
+    CategoryResponseModel,
     Institution,
     InstitutionRepository,
     InstitutionRequestModel,
@@ -40,6 +43,11 @@ async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepos
 async def provide_tag_repo(db_session: AsyncSession) -> TagRepository:
     """This provides the default Institutions repository."""
     return TagRepository(session=db_session)
+
+
+async def provide_category_repo(db_session: AsyncSession) -> CategoryRepository:
+    """This provides the default Institutions repository."""
+    return CategoryRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -133,6 +141,15 @@ async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
+
+
+@post("/api/categories", dependencies={"category_repo": Provide(provide_category_repo)})
+async def create_category(category_repo: CategoryRepository, data: CategoryRequestModel) -> CategoryResponseModel:
+    obj = await category_repo.add(
+        Category(**data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await category_repo.session.commit()
+    return CategoryResponseModel.model_validate(obj)
 
 
 @get("/api/timespans", status_code=HTTP_200_OK)
@@ -252,6 +269,7 @@ __app = Litestar(
         index,
         get_account_types,
         get_categories,
+        create_category,
         get_timespans,
         get_available_sources,
         get_institutions,
