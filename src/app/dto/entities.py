@@ -208,7 +208,7 @@ class Category(Base):
         back_populates="subcategories", remote_side=[id], info=dto_field("private")
     )
     subcategories: Mapped[List["Category"]] = relationship(
-        back_populates="parent_category", lazy="joined", viewonly=True
+        back_populates="parent_category", lazy="select", viewonly=True
     )
     change_category_rules: Mapped[List["AccountTransactionRule"]] = relationship(
         back_populates="new_category", info=dto_field("private")

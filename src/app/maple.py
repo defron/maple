@@ -152,6 +152,19 @@ async def create_category(category_repo: CategoryRepository, data: CategoryReque
     return CategoryResponseModel.model_validate(obj)
 
 
+@delete(
+    "/api/categories/{id:int}",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies={"category_repo": Provide(provide_category_repo)},
+)
+async def delete_category(category_repo: CategoryRepository, id: int) -> None:
+    obj = await category_repo.delete(id)  # type: ignore
+    if obj.id == id:
+        await category_repo.session.commit()
+        return None
+    raise NotFoundException(detail="No data found")
+
+
 @get("/api/timespans", status_code=HTTP_200_OK)
 async def get_timespans(transaction: AsyncSession) -> Sequence[TimeSpan]:
     res = await select_timespans(transaction)
@@ -270,6 +283,7 @@ __app = Litestar(
         get_account_types,
         get_categories,
         create_category,
+        delete_category,
         get_timespans,
         get_available_sources,
         get_institutions,
