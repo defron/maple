@@ -165,7 +165,9 @@ class AccountType(Base):
     is_asset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    accounts: Mapped[List["Account"]] = relationship(back_populates="account_type", lazy="noload", info=dto_field("private"))
+    accounts: Mapped[List["Account"]] = relationship(
+        back_populates="account_type", lazy="noload", info=dto_field("private")
+    )
 
 
 class TransactionTag(Base):
@@ -197,14 +199,14 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     logo: Mapped[str] = mapped_column(Text)
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
-    parent_category_id: Mapped[bool] = mapped_column(Integer, ForeignKey("category.id", ondelete="SET NULL"))
+    parent_category_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("category.id", ondelete="SET NULL"))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     parent_category: Mapped[Optional["Category"]] = relationship(
         back_populates="subcategories", remote_side=[id], info=dto_field("private")
     )
     subcategories: Mapped[List["Category"]] = relationship(
-        back_populates="parent_category", lazy="select", viewonly=True
+        back_populates="parent_category", order_by="Category.id", lazy="select", viewonly=True
     )
     change_category_rules: Mapped[List["AccountTransactionRule"]] = relationship(
         back_populates="new_category", info=dto_field("private")

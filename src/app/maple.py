@@ -7,7 +7,7 @@ from litestar import Litestar, delete, get, post, put
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
-from litestar.exceptions import ClientException, HTTPException, NotFoundException
+from litestar.exceptions import ClientException, HTTPException, MethodNotAllowedException, NotFoundException
 from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, select
@@ -83,7 +83,8 @@ async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
 
 
 async def select_categories(session: AsyncSession) -> Sequence[Category] | None:
-    query = select(Category).options(joinedload(Category.subcategories)).where(Category.parent_category_id.is_(None))
+    query = select(Category).options(joinedload(Category.subcategories)
+                                     ).where(Category.parent_category_id.is_(None)).order_by(Category.id)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -146,7 +147,9 @@ async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
 @post("/api/category", dependencies={"category_repo": Provide(provide_category_repo)})
 async def create_category(category_repo: CategoryRepository, data: CategoryRequestModel) -> CategoryResponseModel:
     if data.parent_category_id is not None:
-        category_repo.get_id_attribute_value
+        parent = await category_repo.get(data.parent_category_id)  # type: ignore
+        if parent.parent_category_id is not None:
+            raise MethodNotAllowedException(detail="Parent category is not a top-level category")
     obj = await category_repo.add(
         Category(**data.model_dump(exclude_unset=True, exclude_none=True)),
     )
@@ -160,6 +163,8 @@ async def create_category(category_repo: CategoryRepository, data: CategoryReque
     dependencies={"category_repo": Provide(provide_category_repo)},
 )
 async def delete_category(category_repo: CategoryRepository, id: int) -> None:
+    if id == 1:
+        raise MethodNotAllowedException(detail="Default category cannot be deleted")
     obj = await category_repo.delete(id)  # type: ignore
     if obj.id == id:
         await category_repo.session.commit()
