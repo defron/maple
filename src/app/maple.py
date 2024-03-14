@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator, Sequence
 from typing import Any, cast
 
 from advanced_alchemy import ConflictError
-from litestar import Litestar, delete, get, post
+from litestar import Litestar, delete, get, post, put
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
@@ -143,8 +143,10 @@ async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
     return res
 
 
-@post("/api/categories", dependencies={"category_repo": Provide(provide_category_repo)})
+@post("/api/category", dependencies={"category_repo": Provide(provide_category_repo)})
 async def create_category(category_repo: CategoryRepository, data: CategoryRequestModel) -> CategoryResponseModel:
+    if data.parent_category_id is not None:
+        category_repo.get_id_attribute_value
     obj = await category_repo.add(
         Category(**data.model_dump(exclude_unset=True, exclude_none=True)),
     )
@@ -153,7 +155,7 @@ async def create_category(category_repo: CategoryRepository, data: CategoryReque
 
 
 @delete(
-    "/api/categories/{id:int}",
+    "/api/category/{id:int}",
     status_code=HTTP_204_NO_CONTENT,
     dependencies={"category_repo": Provide(provide_category_repo)},
 )
@@ -189,12 +191,23 @@ async def get_institutions(transaction: AsyncSession) -> Sequence[Institution]:
     return res
 
 
-@post("/api/institutions", dependencies={"institution_repo": Provide(provide_institution_repo)})
+@post("/api/institution", dependencies={"institution_repo": Provide(provide_institution_repo)})
 async def create_institution(
     institution_repo: InstitutionRepository, data: InstitutionRequestModel
 ) -> InstitutionResponseModel:
     obj = await institution_repo.add(
         Institution(**data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await institution_repo.session.commit()
+    return InstitutionResponseModel.model_validate(obj)
+
+
+@put("/api/institution/{id:int}", dependencies={"institution_repo": Provide(provide_institution_repo)})
+async def update_institution(
+    institution_repo: InstitutionRepository, data: InstitutionRequestModel, id: int
+) -> InstitutionResponseModel:
+    obj = await institution_repo.update(  # type: ignore
+        Institution(id=id, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await institution_repo.session.commit()
     return InstitutionResponseModel.model_validate(obj)
@@ -221,7 +234,7 @@ async def create_tag(tag_repo: TagRepository, data: list[TagRequestModel]) -> li
         raise HTTPException(status_code=HTTP_409_CONFLICT, detail="At least one tag already exists")
 
 
-@delete("/api/tags/{id:int}", status_code=HTTP_204_NO_CONTENT, dependencies={"tag_repo": Provide(provide_tag_repo)})
+@delete("/api/tag/{id:int}", status_code=HTTP_204_NO_CONTENT, dependencies={"tag_repo": Provide(provide_tag_repo)})
 async def delete_tag(tag_repo: TagRepository, id: int) -> None:
     obj = await tag_repo.delete(id)  # type: ignore
     if obj.id == id:
@@ -288,6 +301,7 @@ __app = Litestar(
         get_available_sources,
         get_institutions,
         create_institution,
+        update_institution,
         get_tags,
         create_tag,
         delete_tag,

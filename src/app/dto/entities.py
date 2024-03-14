@@ -5,7 +5,6 @@ from typing import Any, List, Optional
 
 from advanced_alchemy import SQLAlchemyAsyncRepository
 from advanced_alchemy.base import CommonTableAttributes, orm_registry
-from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO
 from litestar.dto import dto_field
 from pydantic import BaseModel as _BaseModel
 from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
@@ -72,15 +71,15 @@ class TimeSpan(Base):
     updated_dt: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
-    bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", info=dto_field("private"))
-    budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", info=dto_field("private"))
+    bills: Mapped[List["Bill"]] = relationship(back_populates="timespan", lazy="noload", info=dto_field("private"))
+    budgets: Mapped[List["Budget"]] = relationship(back_populates="timespan", lazy="noload", info=dto_field("private"))
 
 
 class AccountAuth(Base):
     __tablename__ = "acct_auth"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     external_auth_id: Mapped[str] = mapped_column(String(length=255))
-    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, info=dto_field("private"))
     external_reauth_required: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("FALSE")
     )
@@ -104,9 +103,6 @@ class Institution(Base):
         DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), info=dto_field("read-only")
     )
     accounts: Mapped[List["Account"]] = relationship(back_populates="institution", info=dto_field("private"))
-
-
-InstitutionDTO = SQLAlchemyDTO[Institution]
 
 
 class InstitutionRequestModel(BaseModel):
@@ -169,7 +165,7 @@ class AccountType(Base):
     is_asset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    accounts: Mapped[List["Account"]] = relationship(back_populates="account_type", info=dto_field("private"))
+    accounts: Mapped[List["Account"]] = relationship(back_populates="account_type", lazy="noload", info=dto_field("private"))
 
 
 class TransactionTag(Base):
@@ -247,16 +243,16 @@ class Account(Base):
     external_account_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    account_type: Mapped["AccountType"] = relationship(back_populates="accounts", lazy="noload")
-    institution: Mapped[Optional["Institution"]] = relationship(back_populates="accounts", lazy="noload")
+    account_type: Mapped["AccountType"] = relationship(back_populates="accounts", lazy="select")
+    institution: Mapped[Optional["Institution"]] = relationship(back_populates="accounts", lazy="select")
     authentication: Mapped[Optional["AccountAuth"]] = relationship(back_populates="accounts", lazy="noload")
-    bills: Mapped[List["Bill"]] = relationship(back_populates="account", lazy="noload")
+    bills: Mapped[List["Bill"]] = relationship(back_populates="account", lazy="select")
     historical_balances: Mapped[List["HistoricalAccountBalance"]] = relationship(
         back_populates="account", lazy="noload"
     )
     monthly_cashflows: Mapped[List["Cashflow"]] = relationship(back_populates="account", lazy="noload")
     holdings: Mapped[List["InvestmentPurchase"]] = relationship(back_populates="account", lazy="noload")
-    transaction_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="account", lazy="noload")
+    transaction_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="account", lazy="select")
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="account", lazy="noload")
 
 
