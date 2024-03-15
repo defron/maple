@@ -285,22 +285,31 @@ async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
 
 @post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})
 async def create_account(account_repo: AccountRepository, data: AccountRequestModel) -> AccountResponseModel:
-    try:
-        obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
-        # load relevant account type detail before the connection is closed
-        _acct_type_details = await account_repo.session.execute(
-            select(AccountType).where(AccountType.id == data.account_type_id)
-        )
+    obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
+    # load relevant account type detail before the connection is closed
+    _acct_type_details = await account_repo.session.execute(
+        select(AccountType).where(AccountType.id == data.account_type_id)
+    )
+    await account_repo.session.commit()
+    return AccountResponseModel.model_validate(obj)
+
+
+@delete(
+    "/api/account/{id:int}",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies={"account_repo": Provide(provide_account_repo)},
+)
+async def delete_account(account_repo: AccountRepository, id: int) -> None:
+    obj = await account_repo.delete(id)  # type: ignore
+    if obj.id == id:
         await account_repo.session.commit()
-        return AccountResponseModel.model_validate(obj)
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=HTTP_409_CONFLICT, detail="At least one tag already exists")
+        return None
+    raise NotFoundException(detail="No data found")
 
 
 config = MapleConfig()
 
-# TODO: put these in a config
+
 __engine = create_async_engine(
     f"postgresql+asyncpg://{config.db_user}:{os.environ[config.db_password_key]}@{config.db_host}:{config.db_port}/{config.db_name}",
     connect_args={"server_settings": dict(search_path=config.db_search_schema)},
@@ -363,6 +372,7 @@ __app = Litestar(
         delete_tag,
         get_accounts,
         create_account,
+        delete_account,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
