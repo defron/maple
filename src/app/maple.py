@@ -284,14 +284,13 @@ async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
 
 
 @post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})
-async def create_account(
-    transaction: AsyncSession, account_repo: AccountRepository, data: AccountRequestModel
-) -> AccountResponseModel:
+async def create_account(account_repo: AccountRepository, data: AccountRequestModel) -> AccountResponseModel:
     try:
-        # TODO: figure out why I need to get account types first
-        # and why I cannot use the db session after commit
-        res = await get_account_type(transaction, data.account_type_id)
         obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
+        # load relevant account type detail before the connection is closed
+        _acct_type_details = await account_repo.session.execute(
+            select(AccountType).where(AccountType.id == data.account_type_id)
+        )
         await account_repo.session.commit()
         return AccountResponseModel.model_validate(obj)
     except Exception as e:
