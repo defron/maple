@@ -3,10 +3,8 @@ import uuid
 from datetime import date, datetime, timedelta
 from typing import Any, List, Optional
 
-from advanced_alchemy import SQLAlchemyAsyncRepository
 from advanced_alchemy.base import CommonTableAttributes, orm_registry
 from litestar.dto import dto_field
-from pydantic import BaseModel as _BaseModel
 from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -15,12 +13,6 @@ from sqlalchemy.types import BigInteger, Interval, Text
 
 class Base(CommonTableAttributes, DeclarativeBase):
     registry = orm_registry
-
-
-class BaseModel(_BaseModel):
-    """Extend Pydantic's BaseModel to enable ORM mode"""
-
-    model_config = {"from_attributes": True}
 
 
 class App(Base):
@@ -108,59 +100,6 @@ class Institution(Base):
     accounts: Mapped[List["Account"]] = relationship(back_populates="institution", info=dto_field("private"))
 
 
-class InstitutionRequestModel(BaseModel):
-    name: str
-    logo: str | None
-    url: str | None
-    external_institution_id: str | None
-    external_source_metadata: dict[str, Any] | None
-
-
-class InstitutionResponseModel(BaseModel):
-    id: int
-    name: str
-    logo: str | None
-    url: str | None
-    external_institution_id: str | None
-    external_source_metadata: dict[str, Any] | None
-    created_dt: datetime
-    updated_dt: datetime
-
-
-class CategoryRequestModel(BaseModel):
-    name: str
-    logo: str | None
-    is_hidden: bool
-    parent_category_id: int | None
-
-
-class CategoryResponseModel(BaseModel):
-    id: int
-    name: str
-    logo: str | None
-    is_hidden: bool
-    parent_category_id: int | None
-    created_dt: datetime
-    updated_dt: datetime
-
-
-class TagRequestModel(BaseModel):
-    name: str
-
-
-class TagResponseModel(BaseModel):
-    id: int
-    name: str
-    created_dt: datetime
-    updated_dt: datetime
-
-
-class InstitutionRepository(SQLAlchemyAsyncRepository[Institution]):
-    """Instittuion repository."""
-
-    model_type = Institution
-
-
 class AccountType(Base):
     __tablename__ = "account_type"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
@@ -190,12 +129,6 @@ class TransactionTag(Base):
     )
 
 
-class TagRepository(SQLAlchemyAsyncRepository[TransactionTag]):
-    """Tag repository."""
-
-    model_type = TransactionTag
-
-
 class Category(Base):
     __tablename__ = "category"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
@@ -221,36 +154,32 @@ class Category(Base):
     budgets: Mapped[List["Budget"]] = relationship(back_populates="category", info=dto_field("private"))
 
 
-class CategoryRepository(SQLAlchemyAsyncRepository[Category]):
-    """Tag repository."""
-
-    model_type = Category
-
-
 class Account(Base):
     __tablename__ = "account"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     account_type_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("account_type.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("account_type.id", ondelete="RESTRICT"), nullable=False
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
-    external_txn_cursor_id: Mapped[str] = mapped_column(String(length=255))
-    external_last_request_id: Mapped[str] = mapped_column(String(length=255))
+    external_txn_cursor_id: Mapped[Optional[str]] = mapped_column(String(length=255))
+    external_last_request_id: Mapped[Optional[str]] = mapped_column(String(length=255))
     balance: Mapped[decimal.Decimal] = mapped_column(Numeric(14, 4), nullable=False)
-    account_limit: Mapped[decimal.Decimal] = mapped_column(Numeric(14, 4), nullable=True)
+    account_limit: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(14, 4), nullable=True)
     is_inverted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
-    institution_id: Mapped[int] = mapped_column(Integer, ForeignKey("institution.id", ondelete="SET NULL"))
-    auth_id: Mapped[int] = mapped_column(Integer, ForeignKey("acct_auth.id", ondelete="SET NULL"))
-    external_account_id: Mapped[str] = mapped_column(String(length=255))
+    institution_id: Mapped[int] = mapped_column(Integer, ForeignKey("institution.id", ondelete="RESTRICT"))
+    auth_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("acct_auth.id", ondelete="RESTRICT"))
+    external_account_id: Mapped[Optional[str]] = mapped_column(String(length=255))
     currency_code: Mapped[str] = mapped_column(CHAR(length=3), nullable=False, server_default="USD")
-    acct_num_masked: Mapped[str] = mapped_column(String(length=255))
-    external_account_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    acct_num_masked: Mapped[Optional[str]] = mapped_column(String(length=255))
+    external_account_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB)
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     account_type: Mapped["AccountType"] = relationship(back_populates="accounts", lazy="select")
     institution: Mapped[Optional["Institution"]] = relationship(back_populates="accounts", lazy="select")
-    authentication: Mapped[Optional["AccountAuth"]] = relationship(back_populates="accounts", lazy="noload")
+    authentication: Mapped[Optional["AccountAuth"]] = relationship(
+        back_populates="accounts", lazy="noload", info=dto_field("private")
+    )
     bills: Mapped[List["Bill"]] = relationship(back_populates="account", lazy="select")
     historical_balances: Mapped[List["HistoricalAccountBalance"]] = relationship(
         back_populates="account", lazy="noload"
@@ -266,7 +195,7 @@ class Bill(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(length=255), nullable=False)
     url: Mapped[str] = mapped_column(Text)
-    timespan_id: Mapped[int] = mapped_column(Integer, ForeignKey("timespan.id", ondelete="CASCADE"), nullable=False)
+    timespan_id: Mapped[int] = mapped_column(Integer, ForeignKey("timespan.id", ondelete="RESTRICT"), nullable=False)
     is_dynamic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("TRUE"))
     static_amount: Mapped[decimal.Decimal] = mapped_column(
         Numeric(14, 4), nullable=True, default=0, server_default=text("0")

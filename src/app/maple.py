@@ -1,5 +1,6 @@
 import os
 from collections.abc import AsyncGenerator, Sequence
+from datetime import datetime
 from typing import Any, cast
 
 from advanced_alchemy import ConflictError
@@ -13,26 +14,21 @@ from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, noload
 
 from app.config import MapleConfig
-from app.dto.entities import (
-    AccountType,
-    Category,
-    CategoryRepository,
+from app.dto.entities import Account, AccountType, Category, Institution, TimeSpan, TransactionSource, TransactionTag
+from app.dto.models import (
+    AccountRequestModel,
+    AccountResponseModel,
     CategoryRequestModel,
     CategoryResponseModel,
-    Institution,
-    InstitutionRepository,
     InstitutionRequestModel,
     InstitutionResponseModel,
-    TagRepository,
     TagRequestModel,
     TagResponseModel,
-    TimeSpan,
-    TransactionSource,
-    TransactionTag,
 )
+from app.dto.repos import AccountRepository, CategoryRepository, InstitutionRepository, TagRepository
 
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
@@ -41,13 +37,18 @@ async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepos
 
 
 async def provide_tag_repo(db_session: AsyncSession) -> TagRepository:
-    """This provides the default Institutions repository."""
+    """This provides the default Tag repository."""
     return TagRepository(session=db_session)
 
 
 async def provide_category_repo(db_session: AsyncSession) -> CategoryRepository:
-    """This provides the default Institutions repository."""
+    """This provides the default Category repository."""
     return CategoryRepository(session=db_session)
+
+
+async def provide_account_repo(db_session: AsyncSession) -> AccountRepository:
+    """This provides the default Account repository."""
+    return AccountRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -61,7 +62,7 @@ async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncS
         ) from e
 
 
-async def select_account_types(session: AsyncSession) -> Sequence[AccountType] | None:
+async def select_account_types(session: AsyncSession, id: int | None = None) -> Sequence[AccountType] | None:
     query = select(AccountType)
     try:
         result = await session.execute(query)
@@ -69,6 +70,12 @@ async def select_account_types(session: AsyncSession) -> Sequence[AccountType] |
     except Exception as e:
         print(e)
         return None
+
+
+async def get_account_type(session: AsyncSession, id: int) -> AccountType:
+    query = select(AccountType).where(AccountType.id == id)
+    result = await session.execute(query)
+    return result.scalar_one()
 
 
 # TODO: are these timespans translating correctly?
@@ -83,8 +90,12 @@ async def select_timespans(session: AsyncSession) -> Sequence[TimeSpan] | None:
 
 
 async def select_categories(session: AsyncSession) -> Sequence[Category] | None:
-    query = select(Category).options(joinedload(Category.subcategories)
-                                     ).where(Category.parent_category_id.is_(None)).order_by(Category.id)
+    query = (
+        select(Category)
+        .options(joinedload(Category.subcategories))
+        .where(Category.parent_category_id.is_(None))
+        .order_by(Category.id)
+    )
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -115,6 +126,21 @@ async def select_institutions(session: AsyncSession) -> Sequence[Institution] | 
 
 async def select_tags(session: AsyncSession) -> Sequence[TransactionTag] | None:
     query = select(TransactionTag)
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def select_accounts(session: AsyncSession) -> Sequence[Account] | None:
+    query = select(Account).options(
+        joinedload(Account.account_type),
+        joinedload(Account.transaction_rules),
+        noload(Account.institution),
+        noload(Account.bills),
+    )
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -211,8 +237,9 @@ async def create_institution(
 async def update_institution(
     institution_repo: InstitutionRepository, data: InstitutionRequestModel, id: int
 ) -> InstitutionResponseModel:
-    obj = await institution_repo.update( # type: ignore
-        Institution(id=id, **data.model_dump(exclude_unset=True, exclude_none=True)),
+    timestamp = datetime.now()
+    obj = await institution_repo.update(  # type: ignore
+        Institution(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await institution_repo.session.commit()
     return InstitutionResponseModel.model_validate(obj)
@@ -227,7 +254,7 @@ async def get_tags(transaction: AsyncSession) -> Sequence[TransactionTag]:
 
 
 @post("/api/tags", dependencies={"tag_repo": Provide(provide_tag_repo)})
-async def create_tag(tag_repo: TagRepository, data: list[TagRequestModel]) -> list[TagResponseModel]:
+async def create_tags(tag_repo: TagRepository, data: list[TagRequestModel]) -> list[TagResponseModel]:
     try:
         objs = await tag_repo.add_many(
             [TransactionTag(**raw_obj.model_dump(exclude_unset=True, exclude_none=True)) for raw_obj in data]
@@ -246,6 +273,32 @@ async def delete_tag(tag_repo: TagRepository, id: int) -> None:
         await tag_repo.session.commit()
         return None
     raise NotFoundException(detail="No data found")
+
+
+@get("/api/accounts", status_code=HTTP_200_OK)
+async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
+    res = await select_accounts(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
+@post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})
+async def create_account(
+    transaction: AsyncSession, account_repo: AccountRepository, data: AccountRequestModel
+) -> AccountResponseModel:
+    try:
+        obj = await account_repo.add(
+            Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)), auto_refresh=False
+        )
+        await account_repo.session.commit()
+        # res = await account_repo.get(obj.id)  # type: ignore
+        # acct_type = await get_account_type(transaction, obj.account_type_id)
+        # obj.account_type = acct_type
+        return AccountResponseModel.model_validate(obj)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=HTTP_409_CONFLICT, detail="At least one tag already exists")
 
 
 config = MapleConfig()
@@ -295,6 +348,7 @@ _db_config = SQLAlchemyAsyncConfig(
     before_send_handler=before_send_handler,
 )
 
+
 __app = Litestar(
     [
         index,
@@ -308,8 +362,10 @@ __app = Litestar(
         create_institution,
         update_institution,
         get_tags,
-        create_tag,
+        create_tags,
         delete_tag,
+        get_accounts,
+        create_account,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
