@@ -29,6 +29,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     version: Mapped[str] = mapped_column(String(length=20), nullable=False)
     app_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    private_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, info=dto_field("private"))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
@@ -78,8 +79,10 @@ class TimeSpan(Base):
 class AccountAuth(Base):
     __tablename__ = "acct_auth"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     external_auth_id: Mapped[str] = mapped_column(String(length=255))
-    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, info=dto_field("private"))
+    external_source_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    private_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, info=dto_field("private"))
     external_reauth_required: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("FALSE")
     )
@@ -357,6 +360,7 @@ class Transaction(Base):
     id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
     description: Mapped[str] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11, 4), nullable=False)
+    txn_type: Mapped[str] = mapped_column(CHAR(length=1), nullable=False)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)
     payed_bill_id: Mapped[int] = mapped_column(Integer, ForeignKey("bill.id", ondelete="SET NULL"))

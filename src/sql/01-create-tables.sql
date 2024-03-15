@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS maple.app (
     name VARCHAR(255) UNIQUE NOT NULL,
 	version VARCHAR(20) NOT NULL,
     app_metadata JSONB,
+    private_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -44,8 +45,10 @@ INSERT INTO maple.timespan (id, name, span, allowed_for_budget)
 
 CREATE TABLE IF NOT EXISTS maple.acct_auth (
 	id BIGSERIAL PRIMARY KEY,
+    display_name VARCHAR(255) NOT NULL,
 	external_auth_id VARCHAR(255),
     external_source_metadata JSONB,
+    private_metadata JSONB,
     external_reauth_required BOOLEAN NOT NULL DEFAULT FALSE,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -181,6 +184,7 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
 	id BIGSERIAL PRIMARY KEY,
 	description VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
+    txn_type CHAR(1) NOT NULL,
     account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
     category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,
     payed_bill_id INT REFERENCES maple.bill(id) ON DELETE SET NULL,
@@ -200,6 +204,8 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE maple.transaction ADD CONSTRAINT txn_type_vals CHECK (txn_type IN ('C','D'));
 
 CREATE TABLE IF NOT EXISTS maple.subtransaction (
 	id BIGSERIAL PRIMARY KEY,

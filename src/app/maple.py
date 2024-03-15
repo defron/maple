@@ -211,7 +211,7 @@ async def create_institution(
 async def update_institution(
     institution_repo: InstitutionRepository, data: InstitutionRequestModel, id: int
 ) -> InstitutionResponseModel:
-    obj = await institution_repo.update(  # type: ignore
+    obj = await institution_repo.update( # type: ignore
         Institution(id=id, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await institution_repo.session.commit()
