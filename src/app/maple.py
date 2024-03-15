@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from advanced_alchemy import ConflictError
+from advanced_alchemy import AsyncSessionConfig, ConflictError
 from litestar import Litestar, delete, get, post, put
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
@@ -286,11 +286,11 @@ async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
 @post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})
 async def create_account(account_repo: AccountRepository, data: AccountRequestModel) -> AccountResponseModel:
     obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
+    await account_repo.session.commit()
     # load relevant account type detail before the connection is closed
     _acct_type_details = await account_repo.session.execute(
         select(AccountType).where(AccountType.id == data.account_type_id)
     )
-    await account_repo.session.commit()
     return AccountResponseModel.model_validate(obj)
 
 
@@ -347,11 +347,14 @@ async def before_send_handler(message: Any, scope: Any) -> None:
             delete_litestar_scope_state(scope, SESSION_SCOPE_KEY)
 
 
+session_config = AsyncSessionConfig(expire_on_commit=False)
+
 _db_config = SQLAlchemyAsyncConfig(
     session_dependency_key="db_session",
     engine_instance=__engine,
     session_maker=async_session_factory,
     before_send_handler=before_send_handler,
+    session_config=session_config,
 )
 
 
