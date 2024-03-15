@@ -288,13 +288,11 @@ async def create_account(
     transaction: AsyncSession, account_repo: AccountRepository, data: AccountRequestModel
 ) -> AccountResponseModel:
     try:
-        obj = await account_repo.add(
-            Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)), auto_refresh=False
-        )
+        # TODO: figure out why I need to get account types first
+        # and why I cannot use the db session after commit
+        res = await get_account_type(transaction, data.account_type_id)
+        obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
         await account_repo.session.commit()
-        # res = await account_repo.get(obj.id)  # type: ignore
-        # acct_type = await get_account_type(transaction, obj.account_type_id)
-        # obj.account_type = acct_type
         return AccountResponseModel.model_validate(obj)
     except Exception as e:
         print(e)

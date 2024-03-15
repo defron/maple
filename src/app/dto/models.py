@@ -85,7 +85,7 @@ class AccountTypeResponseModel(BaseModel):
 class AccountResponseModel(BaseModel):
     id: int
     name: str
-    # account_type: AccountTypeResponseModel | None
+    account_type: AccountTypeResponseModel | None
     is_active: bool
     external_txn_cursor_id: str | None
     external_last_request_id: str | None
