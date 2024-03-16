@@ -7,11 +7,12 @@ from advanced_alchemy.base import CommonTableAttributes, orm_registry
 from litestar.dto import dto_field
 from sqlalchemy import CHAR, UUID, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import BigInteger, Interval, Text
 
 
-class Base(CommonTableAttributes, DeclarativeBase):
+class Base(CommonTableAttributes, DeclarativeBase, AsyncAttrs):
     registry = orm_registry
 
 

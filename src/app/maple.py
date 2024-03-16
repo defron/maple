@@ -292,10 +292,7 @@ async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
 async def create_account(account_repo: AccountRepository, data: AccountRequestModel) -> AccountResponseModel:
     obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
     await account_repo.session.commit()
-    # load relevant account type detail before the connection is closed
-    _acct_type_details = await account_repo.session.execute(
-        select(AccountType).where(AccountType.id == data.account_type_id)
-    )
+    await account_repo.session.refresh(obj, ["account_type"])
     return AccountResponseModel.model_validate(obj)
 
 
@@ -320,9 +317,7 @@ async def update_account(
     obj = await account_repo.update(  # type: ignore
         Account(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
-    _acct_type_details = await account_repo.session.execute(
-        select(AccountType).where(AccountType.id == data.account_type_id)
-    )
+    await account_repo.session.refresh(obj, ["account_type"])
     await account_repo.session.commit()
     return AccountResponseModel.model_validate(obj)
 
