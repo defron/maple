@@ -178,7 +178,7 @@ async def get_categories(transaction: AsyncSession) -> Sequence[Category]:
 @post("/api/category", dependencies={"category_repo": Provide(provide_category_repo)})
 async def create_category(category_repo: CategoryRepository, data: CategoryRequestModel) -> CategoryResponseModel:
     if data.parent_category_id is not None:
-        parent = await category_repo.get(data.parent_category_id)  # type: ignore
+        parent = await category_repo.get(data.parent_category_id)
         if parent.parent_category_id is not None:
             raise MethodNotAllowedException(detail="Parent category is not a top-level category")
     obj = await category_repo.add(
@@ -196,7 +196,7 @@ async def create_category(category_repo: CategoryRepository, data: CategoryReque
 async def delete_category(category_repo: CategoryRepository, id: int) -> None:
     if id == 1:
         raise MethodNotAllowedException(detail="Default category cannot be deleted")
-    obj = await category_repo.delete(id)  # type: ignore
+    obj = await category_repo.delete(id)
     if obj.id == id:
         await category_repo.session.commit()
         return None
@@ -243,7 +243,7 @@ async def update_institution(
     institution_repo: InstitutionRepository, data: InstitutionRequestModel, id: int
 ) -> InstitutionResponseModel:
     timestamp = datetime.now()
-    obj = await institution_repo.update(  # type: ignore
+    obj = await institution_repo.update(
         Institution(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await institution_repo.session.commit()
@@ -273,7 +273,7 @@ async def create_tags(tag_repo: TagRepository, data: list[TagRequestModel]) -> l
 
 @delete("/api/tag/{id:int}", status_code=HTTP_204_NO_CONTENT, dependencies={"tag_repo": Provide(provide_tag_repo)})
 async def delete_tag(tag_repo: TagRepository, id: int) -> None:
-    obj = await tag_repo.delete(id)  # type: ignore
+    obj = await tag_repo.delete(id)
     if obj.id == id:
         await tag_repo.session.commit()
         return None
@@ -302,7 +302,7 @@ async def create_account(account_repo: AccountRepository, data: AccountRequestMo
     dependencies={"account_repo": Provide(provide_account_repo)},
 )
 async def delete_account(account_repo: AccountRepository, id: int) -> None:
-    obj = await account_repo.delete(id)  # type: ignore
+    obj = await account_repo.delete(id)
     if obj.id == id:
         await account_repo.session.commit()
         return None
@@ -314,7 +314,7 @@ async def update_account(
     account_repo: AccountRepository, data: UpdateAccountRequestModel, id: int
 ) -> AccountResponseModel:
     timestamp = datetime.now()
-    obj = await account_repo.update(  # type: ignore
+    obj = await account_repo.update(
         Account(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await account_repo.session.refresh(obj, ["account_type"])

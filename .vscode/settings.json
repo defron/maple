@@ -23,5 +23,8 @@
             "source.organizeImports": "explicit",
             "source.unusedImports": "explicit"
         }
+    },
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportUnknownMemberType": "information"
     }
 }
