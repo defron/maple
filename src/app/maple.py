@@ -27,6 +27,7 @@ from app.dto.models import (
     InstitutionResponseModel,
     TagRequestModel,
     TagResponseModel,
+    UpdateAccountRequestModel,
 )
 from app.dto.repos import AccountRepository, CategoryRepository, InstitutionRepository, TagRepository
 
@@ -135,11 +136,15 @@ async def select_tags(session: AsyncSession) -> Sequence[TransactionTag] | None:
 
 
 async def select_accounts(session: AsyncSession) -> Sequence[Account] | None:
-    query = select(Account).options(
-        joinedload(Account.account_type),
-        joinedload(Account.transaction_rules),
-        noload(Account.institution),
-        noload(Account.bills),
+    query = (
+        select(Account)
+        .options(
+            joinedload(Account.account_type),
+            joinedload(Account.transaction_rules),
+            noload(Account.institution),
+            noload(Account.bills),
+        )
+        .order_by(Account.id)
     )
     try:
         result = await session.execute(query)
@@ -307,6 +312,21 @@ async def delete_account(account_repo: AccountRepository, id: int) -> None:
     raise NotFoundException(detail="No data found")
 
 
+@put("/api/account/{id:int}", dependencies={"account_repo": Provide(provide_account_repo)})
+async def update_account(
+    account_repo: AccountRepository, data: UpdateAccountRequestModel, id: int
+) -> AccountResponseModel:
+    timestamp = datetime.now()
+    obj = await account_repo.update(  # type: ignore
+        Account(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    _acct_type_details = await account_repo.session.execute(
+        select(AccountType).where(AccountType.id == data.account_type_id)
+    )
+    await account_repo.session.commit()
+    return AccountResponseModel.model_validate(obj)
+
+
 config = MapleConfig()
 
 
@@ -376,6 +396,7 @@ __app = Litestar(
         get_accounts,
         create_account,
         delete_account,
+        update_account,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

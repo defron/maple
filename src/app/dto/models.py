@@ -82,6 +82,23 @@ class AccountTypeResponseModel(BaseModel):
     updated_dt: datetime
 
 
+class UpdateAccountRequestModel(BaseModel):
+    name: str
+    account_type_id: int
+    is_active: bool
+    external_txn_cursor_id: str | None
+    external_last_request_id: str | None
+    balance: decimal.Decimal
+    account_limit: decimal.Decimal | None
+    is_inverted: bool
+    institution_id: int
+    auth_id: int | None
+    external_account_id: str | None
+    currency_code: str
+    acct_num_masked: str | None
+    external_account_metadata: dict[str, Any] | None
+
+
 class AccountResponseModel(BaseModel):
     id: int
     name: str
