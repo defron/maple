@@ -2,16 +2,16 @@ import decimal
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel as _BaseModel
+from pydantic import BaseModel
 
 
-class BaseModel(_BaseModel):
+class Base(BaseModel):
     """Extend Pydantic's BaseModel to enable ORM mode"""
 
     model_config = {"from_attributes": True}
 
 
-class InstitutionRequestModel(BaseModel):
+class InstitutionRequestModel(Base):
     name: str
     logo: str | None
     url: str | None
@@ -19,7 +19,7 @@ class InstitutionRequestModel(BaseModel):
     external_source_metadata: dict[str, Any] | None
 
 
-class InstitutionResponseModel(BaseModel):
+class InstitutionResponseModel(Base):
     id: int
     name: str
     logo: str | None
@@ -30,14 +30,14 @@ class InstitutionResponseModel(BaseModel):
     updated_dt: datetime
 
 
-class CategoryRequestModel(BaseModel):
+class CategoryRequestModel(Base):
     name: str
     logo: str | None
     is_hidden: bool
     parent_category_id: int | None
 
 
-class CategoryResponseModel(BaseModel):
+class CategoryResponseModel(Base):
     id: int
     name: str
     logo: str | None
@@ -47,18 +47,18 @@ class CategoryResponseModel(BaseModel):
     updated_dt: datetime
 
 
-class TagRequestModel(BaseModel):
+class TagRequestModel(Base):
     name: str
 
 
-class TagResponseModel(BaseModel):
+class TagResponseModel(Base):
     id: int
     name: str
     created_dt: datetime
     updated_dt: datetime
 
 
-class AccountRequestModel(BaseModel):
+class AccountRequestModel(Base):
     name: str
     account_type_id: int
     external_txn_cursor_id: str | None
@@ -74,7 +74,7 @@ class AccountRequestModel(BaseModel):
     external_account_metadata: dict[str, Any] | None
 
 
-class AccountTypeResponseModel(BaseModel):
+class AccountTypeResponseModel(Base):
     id: int
     name: str
     is_asset: bool
@@ -82,7 +82,7 @@ class AccountTypeResponseModel(BaseModel):
     updated_dt: datetime
 
 
-class UpdateAccountRequestModel(BaseModel):
+class UpdateAccountRequestModel(Base):
     name: str
     account_type_id: int
     is_active: bool
@@ -99,7 +99,7 @@ class UpdateAccountRequestModel(BaseModel):
     external_account_metadata: dict[str, Any] | None
 
 
-class AccountResponseModel(BaseModel):
+class AccountResponseModel(Base):
     id: int
     name: str
     account_type_id: int
