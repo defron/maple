@@ -250,6 +250,19 @@ async def update_institution(
     return InstitutionResponseModel.model_validate(obj)
 
 
+@delete(
+    "/api/institution/{id:int}",
+    status_code=HTTP_204_NO_CONTENT,
+    dependencies={"institution_repo": Provide(provide_institution_repo)},
+)
+async def remove_institution(institution_repo: InstitutionRepository, id: int) -> None:
+    obj = await institution_repo.delete(id)
+    if obj.id == id:
+        await institution_repo.session.commit()
+        return None
+    raise NotFoundException(detail="No data found")
+
+
 @get("/api/tags", status_code=HTTP_200_OK)
 async def get_tags(transaction: AsyncSession) -> Sequence[TransactionTag]:
     res = await select_tags(transaction)
@@ -384,6 +397,7 @@ __app = Litestar(
         get_available_sources,
         get_institutions,
         create_institution,
+        remove_institution,
         update_institution,
         get_tags,
         create_tags,
