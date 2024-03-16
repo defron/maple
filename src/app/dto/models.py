@@ -102,6 +102,7 @@ class UpdateAccountRequestModel(BaseModel):
 class AccountResponseModel(BaseModel):
     id: int
     name: str
+    account_type_id: int
     account_type: AccountTypeResponseModel | None
     is_active: bool
     external_txn_cursor_id: str | None
