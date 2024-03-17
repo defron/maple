@@ -11,7 +11,7 @@ from litestar.di import Provide
 from litestar.exceptions import ClientException, HTTPException, MethodNotAllowedException, NotFoundException
 from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
-from sqlalchemy import NullPool, select
+from sqlalchemy import NullPool, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload, noload
@@ -256,6 +256,11 @@ async def update_institution(
     dependencies={"institution_repo": Provide(provide_institution_repo)},
 )
 async def remove_institution(institution_repo: InstitutionRepository, id: int) -> None:
+    associated_accounts_count = (
+        await institution_repo.session.execute(select(func.count(Account.id)).where(Account.institution_id == id))
+    ).scalar()
+    if associated_accounts_count is not None and associated_accounts_count > 0:
+        raise MethodNotAllowedException(detail="Cannot delete an institution with accounts associated with it")
     obj = await institution_repo.delete(id)
     if obj.id == id:
         await institution_repo.session.commit()
