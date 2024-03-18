@@ -135,7 +135,7 @@ async def select_tags(session: AsyncSession) -> Sequence[TransactionTag] | None:
         return None
 
 
-async def select_accounts(session: AsyncSession) -> Sequence[Account] | None:
+async def select_accounts(session: AsyncSession, include_inactive: bool = False) -> Sequence[Account] | None:
     query = (
         select(Account)
         .options(
@@ -146,6 +146,8 @@ async def select_accounts(session: AsyncSession) -> Sequence[Account] | None:
         )
         .order_by(Account.id)
     )
+    if not include_inactive:
+        query.where(Account.is_active)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -312,7 +314,14 @@ async def delete_tag(tag_repo: TagRepository, id: int) -> None:
 
 @get("/api/accounts", status_code=HTTP_200_OK)
 async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
-    res = await select_accounts(transaction)
+    res = await select_accounts(transaction, False)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+@get("/api/accounts/all", status_code=HTTP_200_OK)
+async def get_all_accounts(transaction: AsyncSession) -> Sequence[Account]:
+    res = await select_accounts(transaction, True)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -421,6 +430,7 @@ __app = Litestar(
         create_tags,
         delete_tag,
         get_accounts,
+        get_all_accounts,
         create_account,
         delete_account,
         update_account,
