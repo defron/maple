@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS maple.user (
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    pass_hash TEXT NOT NULL,
-    salt  CHAR(32) NOT NULL,
+    pass_hash CHAR(128) NOT NULL,
+    salt  CHAR(64) NOT NULL,
     user_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
