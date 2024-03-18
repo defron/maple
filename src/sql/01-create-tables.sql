@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS maple.account (
     balance NUMERIC(14,4) NOT NULL,
     account_limit NUMERIC(14,4),
     is_inverted BOOLEAN NOT NULL DEFAULT FALSE,
-    institution_id INT REFERENCES maple.institution(id) ON DELETE RESTRICT,
+    institution_id NOT NULL INT REFERENCES maple.institution(id) ON DELETE RESTRICT,
     auth_id INT REFERENCES maple.acct_auth(id) ON DELETE RESTRICT,
     external_account_id VARCHAR(255),
     currency_code CHAR(3) NOT NULL DEFAULT 'USD',
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS maple.bill (
 
 CREATE TABLE IF NOT EXISTS maple.historical_account_balance (
 	id BIGSERIAL PRIMARY KEY,
-	account_id INT REFERENCES maple.account(id) ON DELETE CASCADE,
+	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
 	balance_date DATE NOT NULL DEFAULT CURRENT_DATE,
     balance NUMERIC(14,4) NOT NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
