@@ -188,6 +188,18 @@ async def create_category(category_repo: CategoryRepository, data: CategoryReque
     return CategoryResponseModel.model_validate(obj)
 
 
+@put("/api/category/{id:int}", dependencies={"category_repo": Provide(provide_category_repo)})
+async def update_category(
+    category_repo: CategoryRepository, data: CategoryRequestModel, id: int
+) -> CategoryResponseModel:
+    timestamp = datetime.now()
+    obj = await category_repo.update(
+        Category(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await category_repo.session.commit()
+    return CategoryResponseModel.model_validate(obj)
+
+
 @delete(
     "/api/category/{id:int}",
     status_code=HTTP_204_NO_CONTENT,
@@ -397,6 +409,7 @@ __app = Litestar(
         get_account_types,
         get_categories,
         create_category,
+        update_category,
         delete_category,
         get_timespans,
         get_available_sources,
