@@ -64,7 +64,7 @@ INSERT INTO maple.category (id, name, parent_category_id)
 INSERT INTO maple.category (id, name, parent_category_id)
     VALUES (23, 'Travel', NULL);
 
-ALTER SEQUENCE maple.category_id_seq RESTART WITH 1000;
+ALTER SEQUENCE maple.category_id_seq RESTART WITH 100;
 
 INSERT INTO maple.category (id, name, parent_category_id)
     VALUES (DEFAULT, 'Auto Insurance', 2);
@@ -413,3 +413,5 @@ INSERT INTO maple.category (id, name, parent_category_id)
 
 INSERT INTO maple.category (id, name, parent_category_id)
     VALUES (DEFAULT, 'Cash & ATM', 1);
+
+ALTER SEQUENCE maple.category_id_seq RESTART WITH 1000;

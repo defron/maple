@@ -208,8 +208,8 @@ async def update_category(
     dependencies={"category_repo": Provide(provide_category_repo)},
 )
 async def delete_category(category_repo: CategoryRepository, id: int) -> None:
-    if id == 1:
-        raise MethodNotAllowedException(detail="Default category cannot be deleted")
+    if id < 1000:
+        raise MethodNotAllowedException(detail="Default categories cannot be deleted")
     obj = await category_repo.delete(id)
     if obj.id == id:
         await category_repo.session.commit()
@@ -319,6 +319,7 @@ async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
         raise NotFoundException(detail="No data found")
     return res
 
+
 @get("/api/accounts/all", status_code=HTTP_200_OK)
 async def get_all_accounts(transaction: AsyncSession) -> Sequence[Account]:
     res = await select_accounts(transaction, True)
@@ -330,8 +331,8 @@ async def get_all_accounts(transaction: AsyncSession) -> Sequence[Account]:
 @post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})
 async def create_account(account_repo: AccountRepository, data: AccountRequestModel) -> AccountResponseModel:
     obj = await account_repo.add(Account(is_active=True, **data.model_dump(exclude_unset=True, exclude_none=True)))
-    await account_repo.session.commit()
     await account_repo.session.refresh(obj, ["account_type"])
+    await account_repo.session.commit()
     return AccountResponseModel.model_validate(obj)
 
 
