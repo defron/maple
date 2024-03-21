@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from advanced_alchemy import AsyncSessionConfig, ConflictError
-from litestar import Litestar, delete, get, post, put
+from litestar import Litestar, Response, delete, get, post, put
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
@@ -19,6 +19,7 @@ from sqlalchemy.orm import joinedload, noload
 from app.config import MapleConfig
 from app.dto.entities import Account, AccountType, Category, Institution, TimeSpan, TransactionSource, TransactionTag
 from app.dto.models import (
+    AccountDTO,
     AccountRequestModel,
     AccountResponseModel,
     CategoryRequestModel,
@@ -312,20 +313,20 @@ async def delete_tag(tag_repo: TagRepository, id: int) -> None:
     raise NotFoundException(detail="No data found")
 
 
-@get("/api/accounts", status_code=HTTP_200_OK)
-async def get_accounts(transaction: AsyncSession) -> Sequence[Account]:
+@get("/api/accounts", return_dto=AccountDTO, status_code=HTTP_200_OK)
+async def get_accounts(transaction: AsyncSession) -> Response[Sequence[Account]]:
     res = await select_accounts(transaction, False)
     if res is None:
         raise NotFoundException(detail="No data found")
-    return res
+    return Response(content=res)
 
 
-@get("/api/accounts/all", status_code=HTTP_200_OK)
-async def get_all_accounts(transaction: AsyncSession) -> Sequence[Account]:
+@get("/api/accounts/all", return_dto=AccountDTO, status_code=HTTP_200_OK)
+async def get_all_accounts(transaction: AsyncSession) -> Response[Sequence[Account]]:
     res = await select_accounts(transaction, True)
     if res is None:
         raise NotFoundException(detail="No data found")
-    return res
+    return Response(content=res)
 
 
 @post("/api/account", dependencies={"account_repo": Provide(provide_account_repo)})

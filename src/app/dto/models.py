@@ -2,7 +2,10 @@ import decimal
 from datetime import datetime
 from typing import Any
 
+from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO, SQLAlchemyDTOConfig
 from pydantic import BaseModel
+
+from app.dto.entities import Account
 
 
 class Base(BaseModel):
@@ -118,3 +121,18 @@ class AccountResponseModel(Base):
     external_account_metadata: dict[str, Any] | None
     created_dt: datetime
     updated_dt: datetime
+
+
+class AccountDTO(SQLAlchemyDTO[Account]):
+    config = SQLAlchemyDTOConfig(
+        exclude={
+            "transactions",
+            "transaction_rules",
+            "holdings",
+            "monthly_cashflows",
+            "historical_balances",
+            "bills",
+            "authentication",
+            "institution",
+        }
+    )
