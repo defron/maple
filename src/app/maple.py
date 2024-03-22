@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from advanced_alchemy import AsyncSessionConfig, ConflictError
 from litestar import Litestar, delete, get, post, put
+from litestar.config.compression import CompressionConfig
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
@@ -440,6 +441,9 @@ __app = Litestar(
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
+    compression_config=CompressionConfig(
+        backend="brotli", brotli_quality=5, brotli_gzip_fallback=True, gzip_compress_level=6
+    ),
 )
 
 
