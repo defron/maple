@@ -135,6 +135,7 @@ class Category(Base):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     name: Mapped[str] = mapped_column(String(length=255), unique=True, nullable=False)
     logo: Mapped[str] = mapped_column(Text)
+    is_protected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     is_hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     parent_category_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("category.id", ondelete="SET NULL"))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

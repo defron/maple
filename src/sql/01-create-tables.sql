@@ -84,14 +84,15 @@ CREATE TABLE IF NOT EXISTS maple.category (
 	id BIGSERIAL PRIMARY KEY,
 	name VARCHAR(128) UNIQUE NOT NULL,
     logo TEXT,
+    is_protected BOOLEAN NOT NULL DEFAULT FALSE,
     is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
     parent_category_id INT REFERENCES maple.category(id) ON DELETE SET NULL,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO maple.category (id, name, parent_category_id)
-    VALUES (1, 'Uncategorized', NULL);
+INSERT INTO maple.category (id, name, parent_category_id, is_protected)
+    VALUES (1, 'Uncategorized', NULL, TRUE);
 
 CREATE TABLE IF NOT EXISTS maple.account (
 	id BIGSERIAL PRIMARY KEY,
@@ -103,7 +104,7 @@ CREATE TABLE IF NOT EXISTS maple.account (
     balance NUMERIC(14,4) NOT NULL,
     account_limit NUMERIC(14,4),
     is_inverted BOOLEAN NOT NULL DEFAULT FALSE,
-    institution_id NOT NULL INT REFERENCES maple.institution(id) ON DELETE RESTRICT,
+    institution_id INT NOT NULL REFERENCES maple.institution(id) ON DELETE RESTRICT,
     auth_id INT REFERENCES maple.acct_auth(id) ON DELETE RESTRICT,
     external_account_id VARCHAR(255),
     currency_code CHAR(3) NOT NULL DEFAULT 'USD',

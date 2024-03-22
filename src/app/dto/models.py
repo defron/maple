@@ -44,6 +44,7 @@ class CategoryResponseModel(Base):
     id: int
     name: str
     logo: str | None
+    is_protected: bool
     is_hidden: bool
     parent_category_id: int | None
     created_dt: datetime

@@ -209,7 +209,8 @@ async def update_category(
     dependencies={"category_repo": Provide(provide_category_repo)},
 )
 async def delete_category(category_repo: CategoryRepository, id: int) -> None:
-    if id < 1000:
+    pending_delete = await category_repo.get(id)
+    if pending_delete.is_protected:
         raise MethodNotAllowedException(detail="Default categories cannot be deleted")
     obj = await category_repo.delete(id)
     if obj.id == id:
