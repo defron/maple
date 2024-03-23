@@ -19,11 +19,4 @@ class _MapleConfig:
     log_level: str = os.getenv("MAPLE_LOG_LEVEL", "DEBUG")
 
 
-class MapleConfig:
-    _config: _MapleConfig | None = None
-
-    @staticmethod
-    def init() -> _MapleConfig:
-        if MapleConfig._config is None:
-            MapleConfig._config = _MapleConfig()
-        return _MapleConfig()
+MAPLE_CONFIG = _MapleConfig()

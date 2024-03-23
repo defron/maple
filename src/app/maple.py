@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload, noload
 
-from app.config import MapleConfig
+from app.config import MAPLE_CONFIG
 from app.dto.entities import Account, AccountType, Category, Institution, TimeSpan, TransactionSource, TransactionTag
 from app.dto.models import (
     AccountDTO,
@@ -365,7 +365,7 @@ async def update_account(
     return AccountResponseModel.model_validate(obj)
 
 
-config = MapleConfig.init()
+config = MAPLE_CONFIG
 
 
 __engine = create_async_engine(
