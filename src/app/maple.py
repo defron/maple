@@ -365,7 +365,7 @@ async def update_account(
     return AccountResponseModel.model_validate(obj)
 
 
-config = MapleConfig()
+config = MapleConfig.init()
 
 
 __engine = create_async_engine(
