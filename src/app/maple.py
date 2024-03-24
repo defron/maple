@@ -450,6 +450,23 @@ async def create_manual_transaction(
     return obj
 
 
+@put(
+    "/api/transaction/{id:int}",
+    return_dto=TransactionDTO,
+    dependencies={"transaction_repo": Provide(provide_transaction_repo)},
+)
+async def update_transaction(
+    transaction_repo: TransactionRepository, data: ManualTransactionRequest, id: int
+) -> Transaction:
+    timestamp = datetime.now()
+    obj = await transaction_repo.update(
+        Transaction(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
+    await transaction_repo.session.commit()
+    return obj
+
+
 config = MAPLE_CONFIG
 
 

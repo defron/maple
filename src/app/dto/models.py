@@ -152,6 +152,16 @@ class ManualTransactionRequest(Base):
     original_note: str | None
 
 
+class UpdateTransactionRequest(Base):
+    category_id: int
+    payed_bill_id: int | None
+    txn_date: date | None
+    custom_merchant_name: str | None
+    merchant_url: str | None
+    custom_note: str | None
+    soft_delete: bool | None
+
+
 class TransactionDTO(SQLAlchemyDTO[Transaction]):
     config = SQLAlchemyDTOConfig(
         exclude={
