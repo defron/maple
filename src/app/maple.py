@@ -182,6 +182,24 @@ async def select_accounts(session: AsyncSession, include_inactive: bool = False)
         return None
 
 
+async def select_transactions(session: AsyncSession, account_id: int | None = None) -> Sequence[Transaction] | None:
+    query = (
+        select(Transaction)
+        .options(
+            joinedload(Transaction.category), joinedload(Transaction.subtransactions), joinedload(Transaction.tags)
+        )
+        .order_by(Transaction.txn_date.desc(), Transaction.id)
+    )
+    if account_id is not None:
+        query.where(Transaction.account_id == account_id)
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
 @get("/")
 async def index() -> str:
     return "Hello, world!"
@@ -389,6 +407,15 @@ async def update_account(
     return AccountResponseModel.model_validate(obj)
 
 
+@get("/api/transactions/{account_id:int}/all", return_dto=TransactionDTO, status_code=HTTP_200_OK)
+async def get_all_transactions_for_account(transaction: AsyncSession, account_id: int) -> Sequence[Transaction]:
+    # TODO: need to change this and add date filter
+    res = await select_transactions(transaction, account_id)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
 @post(
     "/api/transaction/manual",
     return_dto=TransactionDTO,
@@ -397,6 +424,7 @@ async def update_account(
 async def create_manual_transaction(
     transaction_repo: TransactionRepository, data: ManualTransactionRequest
 ) -> Transaction:
+    # TODO: I don't like this being right here
     source_id = uuid.UUID("74f21da5-5bf9-485d-a934-7a9509aa18a8")
     hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
     matches = await transaction_repo.count(
@@ -417,7 +445,7 @@ async def create_manual_transaction(
             **data.model_dump(exclude_unset=True, exclude_none=True),
         )
     )
-    await transaction_repo.session.refresh(obj, ["category"])
+    await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
     await transaction_repo.session.commit()
     return obj
 
@@ -496,6 +524,7 @@ __app = Litestar(
         delete_account,
         update_account,
         create_manual_transaction,
+        get_all_transactions_for_account,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

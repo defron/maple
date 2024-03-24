@@ -312,14 +312,18 @@ class Transaction(Base):
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     account: Mapped["Account"] = relationship(back_populates="transactions", lazy="noload")
-    category: Mapped["Category"] = relationship(back_populates="transactions", lazy="select")
+    category: Mapped["Category"] = relationship(
+        back_populates="transactions", lazy="select", info=dto_field("read-only")
+    )
     paid_bill: Mapped[Optional["Bill"]] = relationship(back_populates="paid_bill_transactions", lazy="noload")
     transaction_source: Mapped[Optional["TransactionSource"]] = relationship(
         back_populates="transactions", lazy="noload"
     )
-    subtransactions: Mapped[List["Subtransaction"]] = relationship(back_populates="split_transaction", lazy="noload")
+    subtransactions: Mapped[List["Subtransaction"]] = relationship(
+        back_populates="split_transaction", lazy="select", info=dto_field("read-only"), order_by="Subtransaction.id"
+    )
     tags: Mapped[List["TransactionTag"]] = relationship(
-        secondary="txn_tags", back_populates="transactions", lazy="noload"
+        secondary="txn_tags", back_populates="transactions", lazy="select", info=dto_field("read-only")
     )
     tag_associations: Mapped[List["TransactionTags"]] = relationship(
         back_populates="transaction", viewonly=True, lazy="noload"

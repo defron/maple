@@ -158,8 +158,6 @@ class TransactionDTO(SQLAlchemyDTO[Transaction]):
             "account",
             "paid_bill",
             "transaction_source",
-            "subtransactions",
-            "tags",
             "tag_associations",
         }
     )
