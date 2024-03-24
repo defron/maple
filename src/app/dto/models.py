@@ -5,7 +5,7 @@ from typing import Any
 from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO, SQLAlchemyDTOConfig
 from pydantic import BaseModel
 
-from app.dto.entities import Account
+from app.dto.entities import Account, Transaction
 
 
 class Base(BaseModel):
@@ -138,8 +138,9 @@ class AccountDTO(SQLAlchemyDTO[Account]):
         }
     )
 
+
 class ManualTransactionRequest(Base):
-    description: str | None
+    label: str | None
     amount: decimal.Decimal
     txn_type: str
     account_id: int
@@ -149,3 +150,16 @@ class ManualTransactionRequest(Base):
     original_merchant_name: str | None
     merchant_url: str | None
     original_note: str | None
+
+
+class TransactionDTO(SQLAlchemyDTO[Transaction]):
+    config = SQLAlchemyDTOConfig(
+        exclude={
+            "account",
+            "paid_bill",
+            "transaction_source",
+            "subtransactions",
+            "tags",
+            "tag_associations",
+        }
+    )

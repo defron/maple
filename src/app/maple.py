@@ -1,4 +1,5 @@
 import os
+import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 from typing import Any, cast
@@ -18,7 +19,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import joinedload, noload
 
 from app.config import MAPLE_CONFIG
-from app.dto.entities import Account, AccountType, Category, Institution, TimeSpan, TransactionSource, TransactionTag
+from app.dto.entities import (
+    Account,
+    AccountType,
+    Category,
+    Institution,
+    TimeSpan,
+    Transaction,
+    TransactionSource,
+    TransactionTag,
+)
 from app.dto.models import (
     AccountDTO,
     AccountRequestModel,
@@ -27,11 +37,20 @@ from app.dto.models import (
     CategoryResponseModel,
     InstitutionRequestModel,
     InstitutionResponseModel,
+    ManualTransactionRequest,
     TagRequestModel,
     TagResponseModel,
+    TransactionDTO,
     UpdateAccountRequestModel,
 )
-from app.dto.repos import AccountRepository, CategoryRepository, InstitutionRepository, TagRepository
+from app.dto.repos import (
+    AccountRepository,
+    CategoryRepository,
+    InstitutionRepository,
+    TagRepository,
+    TransactionRepository,
+)
+from app.helpers.transaction_hash_helper import transaction_hash
 
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
@@ -52,6 +71,11 @@ async def provide_category_repo(db_session: AsyncSession) -> CategoryRepository:
 async def provide_account_repo(db_session: AsyncSession) -> AccountRepository:
     """This provides the default Account repository."""
     return AccountRepository(session=db_session)
+
+
+async def provide_transaction_repo(db_session: AsyncSession) -> TransactionRepository:
+    """This provides the default Account repository."""
+    return TransactionRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -365,6 +389,39 @@ async def update_account(
     return AccountResponseModel.model_validate(obj)
 
 
+@post(
+    "/api/transaction/manual",
+    return_dto=TransactionDTO,
+    dependencies={"transaction_repo": Provide(provide_transaction_repo)},
+)
+async def create_manual_transaction(
+    transaction_repo: TransactionRepository, data: ManualTransactionRequest
+) -> Transaction:
+    source_id = uuid.UUID("74f21da5-5bf9-485d-a934-7a9509aa18a8")
+    hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
+    matches = await transaction_repo.count(
+        statement=select(Transaction)
+        .where(Transaction.txn_hash == hash)
+        .where(Transaction.txn_date == data.txn_date)
+        .where(Transaction.account_id == data.account_id)
+    )
+    matches += 1
+    obj = await transaction_repo.add(
+        Transaction(
+            soft_delete=False,
+            is_pending=False,
+            txn_source_id=source_id,
+            txn_hash=hash,
+            daycount=matches,
+            source_metadata={},
+            **data.model_dump(exclude_unset=True, exclude_none=True),
+        )
+    )
+    await transaction_repo.session.refresh(obj, ["category"])
+    await transaction_repo.session.commit()
+    return obj
+
+
 config = MAPLE_CONFIG
 
 
@@ -438,6 +495,7 @@ __app = Litestar(
         create_account,
         delete_account,
         update_account,
+        create_manual_transaction,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

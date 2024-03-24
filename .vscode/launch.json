@@ -11,7 +11,7 @@
             "request": "launch",
             "module": "litestar",
             "justMyCode": true,
-            "args": ["--app", "app.maple:Maple", "run", "--reload"],
+            "args": ["--app", "app.maple:Maple", "run", "--reload", "--debug"],
             "envFile": "${workspaceFolder}/.env"
         },
         {
@@ -20,7 +20,7 @@
             "request": "launch",
             "module": "litestar",
             "justMyCode": true,
-            "args": ["--app-dir", "./src", "run"],
+            "args": ["--app-dir", "./src", "run", "--debug"],
             "envFile": "${workspaceFolder}/.env"
         }
     ]

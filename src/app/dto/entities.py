@@ -289,7 +289,7 @@ class AccountTransactionRule(Base):
 class Transaction(Base):
     __tablename__ = "transaction"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
-    description: Mapped[Optional[str]] = mapped_column(String(length=4096))
+    label: Mapped[Optional[str]] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11, 4), nullable=False)
     txn_type: Mapped[str] = mapped_column(CHAR(length=1), nullable=False)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
@@ -312,7 +312,7 @@ class Transaction(Base):
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     account: Mapped["Account"] = relationship(back_populates="transactions", lazy="noload")
-    category: Mapped["Category"] = relationship(back_populates="transactions", lazy="noload")
+    category: Mapped["Category"] = relationship(back_populates="transactions", lazy="select")
     paid_bill: Mapped[Optional["Bill"]] = relationship(back_populates="paid_bill_transactions", lazy="noload")
     transaction_source: Mapped[Optional["TransactionSource"]] = relationship(
         back_populates="transactions", lazy="noload"
