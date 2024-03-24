@@ -1,5 +1,5 @@
 import decimal
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO, SQLAlchemyDTOConfig
@@ -137,3 +137,15 @@ class AccountDTO(SQLAlchemyDTO[Account]):
             "institution",
         }
     )
+
+class ManualTransactionRequest(Base):
+    description: str | None
+    amount: decimal.Decimal
+    txn_type: str
+    account_id: int
+    category_id: int
+    payed_bill_id: int | None
+    txn_date: date
+    original_merchant_name: str | None
+    merchant_url: str | None
+    original_note: str | None

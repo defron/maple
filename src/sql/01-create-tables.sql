@@ -200,7 +200,8 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
     txn_source_id uuid REFERENCES maple.txn_source(id) ON DELETE SET NULL,
     soft_delete BOOLEAN NOT NULL DEFAULT FALSE,
     is_pending BOOLEAN NOT NULL DEFAULT FALSE,
-    hash_and_daycount CHAR(67) NOT NULL,
+    txn_hash CHAR(64) NOT NULL,
+    daycount INT NOT NULL,
     source_metadata JSONB,
 	created_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
