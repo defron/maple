@@ -6,7 +6,7 @@ authors = [
     {name = "Kevin aka defron", email = "git.repos@defron.org"},
 ]
 dependencies = [
-    "litestar[brotli,sqlalchemy,standard]>=2.7.0",
+    "litestar[brotli,sqlalchemy,standard,structlog]>=2.7.0",
     "asyncpg>=0.29.0",
     "sqlalchemy[asyncio]>=2.0.25",
     "alembic>=1.13.1",
