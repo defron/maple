@@ -2,15 +2,18 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
+import msgspec
 from advanced_alchemy import AsyncSessionConfig, ConflictError
 from litestar import Litestar, delete, get, post, put
 from litestar.config.compression import CompressionConfig
 from litestar.contrib.sqlalchemy.plugins import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE_KEY, SESSION_TERMINUS_ASGI_EVENTS
 from litestar.di import Provide
+from litestar.enums import RequestEncodingType
 from litestar.exceptions import ClientException, HTTPException, MethodNotAllowedException, NotFoundException
+from litestar.params import Body
 from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, func, select
@@ -35,6 +38,7 @@ from app.dto.models import (
     AccountResponseModel,
     CategoryRequestModel,
     CategoryResponseModel,
+    CsvTransactionsRequest,
     InstitutionRequestModel,
     InstitutionResponseModel,
     ManualTransactionRequest,
@@ -467,6 +471,46 @@ async def update_transaction(
     return obj
 
 
+@post(
+    "/api/transactions/csv",
+    return_dto=TransactionDTO,
+    dependencies={"transaction_repo": Provide(provide_transaction_repo)},
+)
+async def add_bulk_transactions_csv(
+    transaction_repo: TransactionRepository,
+    data: Annotated[CsvTransactionsRequest, Body(media_type=RequestEncodingType.MULTI_PART)],
+) -> None:
+    # TODO: I don't like this being right here
+    source_id = uuid.UUID("993982ef-1dc4-4982-b9a0-4f7185d60250")
+    print(data)
+    print(source_id)
+    _category_mapping = msgspec.json.decode(buf=(data.category_mapping or "{'*': 1}"), type=dict[str, int])
+    # load relevant account type detail before the connection is closed
+    _acct_type_details = await transaction_repo.session.execute(select(Category))
+    # hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
+    # matches = await transaction_repo.count(
+    #     statement=select(Transaction)
+    #     .where(Transaction.txn_hash == hash)
+    #     .where(Transaction.txn_date == data.txn_date)
+    #     .where(Transaction.account_id == data.account_id)
+    # )
+    # matches += 1
+    # obj = await transaction_repo.add(
+    #     Transaction(
+    #         soft_delete=False,
+    #         is_pending=False,
+    #         txn_source_id=source_id,
+    #         txn_hash=hash,
+    #         daycount=matches,
+    #         source_metadata={},
+    #         **data.model_dump(exclude_unset=True, exclude_none=True),
+    #     )
+    # )
+    # await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
+    # await transaction_repo.session.commit()
+    return None
+
+
 config = MAPLE_CONFIG
 
 
@@ -542,6 +586,7 @@ __app = Litestar(
         update_account,
         create_manual_transaction,
         get_all_transactions_for_account,
+        add_bulk_transactions_csv,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

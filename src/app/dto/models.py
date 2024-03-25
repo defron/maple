@@ -1,8 +1,10 @@
 import decimal
+from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
 from litestar.contrib.sqlalchemy.dto import SQLAlchemyDTO, SQLAlchemyDTOConfig
+from litestar.datastructures import UploadFile
 from pydantic import BaseModel
 
 from app.dto.entities import Account, Transaction
@@ -12,6 +14,12 @@ class Base(BaseModel):
     """Extend Pydantic's BaseModel to enable ORM mode"""
 
     model_config = {"from_attributes": True}
+
+
+class UploadBase(BaseModel):
+    """Extend Pydantic's BaseModel to enable ORM mode"""
+
+    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
 class InstitutionRequestModel(Base):
@@ -171,3 +179,21 @@ class TransactionDTO(SQLAlchemyDTO[Transaction]):
             "tag_associations",
         }
     )
+
+
+@dataclass
+class CsvTransactionsRequest:
+    account_id: int
+    label_field: str | None
+    amount_field: str
+    txn_type_from_sign: bool
+    positive_is_credit: bool
+    txn_type_field_name: str
+    txn_type_credit_value: str
+    category_field: str | None
+    category_mapping: str | None
+    txn_date_field: str
+    txn_date_format: str
+    note_field: str | None
+    external_txn_id_field: str | None
+    file: UploadFile
