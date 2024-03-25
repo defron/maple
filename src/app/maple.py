@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Annotated, Any, cast
 
 import msgspec
+import pandas
 from advanced_alchemy import AsyncSessionConfig, ConflictError
 from litestar import Litestar, delete, get, post, put
 from litestar.config.compression import CompressionConfig
@@ -484,7 +485,10 @@ async def add_bulk_transactions_csv(
     source_id = uuid.UUID("993982ef-1dc4-4982-b9a0-4f7185d60250")
     print(data)
     print(source_id)
-    _category_mapping = msgspec.json.decode(buf=(data.category_mapping or "{'*': 1}"), type=dict[str, int])
+    _category_mapping = msgspec.json.decode((data.category_mapping or "{'*': 1}"), type=dict[str, int], strict=True)
+    df = pandas.read_csv(data.file.file)
+    for index, row in df.iterrows():
+        print(row)
     # load relevant account type detail before the connection is closed
     _acct_type_details = await transaction_repo.session.execute(select(Category))
     # hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
