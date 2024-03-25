@@ -488,15 +488,16 @@ async def add_bulk_transactions_csv(
     _category_mapping = msgspec.json.decode((data.category_mapping or "{'*': 1}"), type=dict[str, int], strict=True)
     df = pandas.read_csv(data.file.file, dtype=str)
     if data.txn_type_from_sign:
-        df["txn_type"] = df.apply(
+        df["maple_txn_type"] = df.apply(
             lambda row: "C" if row[data.amount_field].str.startswith("-", "0") and data.positive_is_credit else "D",
             axis=1,
         )
     else:
-        df["txn_type"] = df.apply(
+        df["maple_txn_type"] = df.apply(
             lambda row: "C" if row[data.txn_type_field_name] == data.txn_type_credit_value else "D", axis=1
         )
     df[data.amount_field] = df[data.amount_field].replace({"\$": "", ",": "", "-": ""}, regex=True)
+    df["maple_txn_category"] = df.apply(lambda row: _category_mapping.get(row[data.category_field], 1), axis=1)
     for index, row in df.iterrows():
         print(row)
     # load relevant account type detail before the connection is closed
