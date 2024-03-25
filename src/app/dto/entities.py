@@ -289,6 +289,7 @@ class AccountTransactionRule(Base):
 class Transaction(Base):
     __tablename__ = "transaction"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(BigInteger, autoincrement=True, primary_key=True)
+    external_txn_id: Mapped[Optional[str]] = mapped_column(String(length=255))
     label: Mapped[Optional[str]] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11, 4), nullable=False)
     txn_type: Mapped[str] = mapped_column(CHAR(length=1), nullable=False)
@@ -340,8 +341,10 @@ class Subtransaction(Base):
     custom_note: Mapped[str] = mapped_column(String(length=4096))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    category: Mapped["Category"] = relationship(back_populates="subtransactions", lazy="noload")
-    split_transaction: Mapped["Transaction"] = relationship(back_populates="subtransactions", lazy="noload")
+    category: Mapped["Category"] = relationship(back_populates="subtransactions", lazy="select")
+    split_transaction: Mapped["Transaction"] = relationship(
+        back_populates="subtransactions", lazy="select", info=dto_field("private")
+    )
 
 
 class TransactionTags(Base):

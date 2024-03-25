@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS maple.account_txn_rule (
 
 CREATE TABLE IF NOT EXISTS maple.transaction (
 	id BIGSERIAL PRIMARY KEY,
+    external_txn_id VARCHAR(255),
 	label VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
     txn_type CHAR(1) NOT NULL,
