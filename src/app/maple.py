@@ -1,3 +1,4 @@
+import decimal
 import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
@@ -489,16 +490,36 @@ async def add_bulk_transactions_csv(
     df = pandas.read_csv(data.file.file, dtype=str)
     if data.txn_type_from_sign:
         df["maple_txn_type"] = df.apply(
-            lambda row: "C" if row[data.amount_field].str.startswith("-", "0") and data.positive_is_credit else "D",
+            lambda row: (  # pyright: ignore
+                "C" if row[data.amount_field].str.startswith("-", "0") and data.positive_is_credit else "D"
+            ),
             axis=1,
         )
     else:
         df["maple_txn_type"] = df.apply(
-            lambda row: "C" if row[data.txn_type_field_name] == data.txn_type_credit_value else "D", axis=1
+            lambda row: "C" if row[data.txn_type_field_name] == data.txn_type_credit_value else "D",  # pyright: ignore
+            axis=1,
         )
-    df[data.amount_field] = df[data.amount_field].replace({"\$": "", ",": "", "-": ""}, regex=True)
-    df["maple_txn_category"] = df.apply(lambda row: _category_mapping.get(row[data.category_field], 1), axis=1)
-    for index, row in df.iterrows():
+    df[data.amount_field] = df[data.amount_field].replace({r"$": "", ",": "", "-": ""}, regex=True)
+    if data.category_field is not None:
+        df["maple_txn_category"] = df.apply(
+            lambda row: _category_mapping.get(row[data.category_field], 1), axis=1  # pyright: ignore
+        )
+    else:
+        df["maple_txn_category"] = 1
+    if data.label_field is None:
+        df["maple_label"] = "Imported Record"
+    else:
+        df["maple_label"] = df[data.label_field]
+    df["maple_txn_hash"] = df.apply(
+        lambda row: transaction_hash(  # pyright: ignore
+            datetime.date(row[data.txn_date_field]),  # pyright: ignore
+            decimal.Decimal(row[data.amount_field]),  # pyright: ignore
+            row["maple_txn_type"],  # pyright: ignore
+            row["maple_label"],  # pyright: ignore
+        )
+    )
+    for _index, row in df.iterrows():
         print(row)
     # load relevant account type detail before the connection is closed
     _acct_type_details = await transaction_repo.session.execute(select(Category))
