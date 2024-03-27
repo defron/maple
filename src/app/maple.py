@@ -484,10 +484,9 @@ async def add_bulk_transactions_csv(
 ) -> None:
     # TODO: I don't like this being right here
     source_id = uuid.UUID("993982ef-1dc4-4982-b9a0-4f7185d60250")
-    print(data)
-    print(source_id)
     _category_mapping = msgspec.json.decode((data.category_mapping or "{'*': 1}"), type=dict[str, int], strict=True)
     df = pandas.read_csv(data.file.file, dtype=str)
+    df.fillna(value="", inplace=True)
     if data.txn_type_from_sign:
         df["maple_txn_type"] = df.apply(
             lambda row: (  # pyright: ignore
@@ -513,37 +512,39 @@ async def add_bulk_transactions_csv(
         df["maple_label"] = df[data.label_field]
     df["maple_txn_hash"] = df.apply(
         lambda row: transaction_hash(  # pyright: ignore
-            datetime.date(row[data.txn_date_field]),  # pyright: ignore
+            datetime.strptime(row[data.txn_date_field], data.txn_date_format).date(),  # pyright: ignore
             decimal.Decimal(row[data.amount_field]),  # pyright: ignore
             row["maple_txn_type"],  # pyright: ignore
             row["maple_label"],  # pyright: ignore
-        )
+        ),
+        axis=1,
     )
-    for _index, row in df.iterrows():
-        print(row)
-    # load relevant account type detail before the connection is closed
-    _acct_type_details = await transaction_repo.session.execute(select(Category))
-    # hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
-    # matches = await transaction_repo.count(
-    #     statement=select(Transaction)
-    #     .where(Transaction.txn_hash == hash)
-    #     .where(Transaction.txn_date == data.txn_date)
-    #     .where(Transaction.account_id == data.account_id)
-    # )
-    # matches += 1
-    # obj = await transaction_repo.add(
-    #     Transaction(
-    #         soft_delete=False,
-    #         is_pending=False,
-    #         txn_source_id=source_id,
-    #         txn_hash=hash,
-    #         daycount=matches,
-    #         source_metadata={},
-    #         **data.model_dump(exclude_unset=True, exclude_none=True),
-    #     )
-    # )
-    # await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
-    # await transaction_repo.session.commit()
+    # TODO: get daycount for the insert
+    # is this gonna kill perf?
+    daycount = 1
+    # load relevant categories
+    _categories = await transaction_repo.session.execute(select(Category))
+    for _index, row in df.iterrows():  # pyright: ignore
+        obj = await transaction_repo.add(
+            Transaction(
+                soft_delete=False,
+                is_pending=False,
+                txn_source_id=source_id,
+                txn_hash=row["maple_txn_hash"],
+                daycount=daycount,
+                source_metadata=row.to_dict(),
+                external_txn_id=data.file.filename,
+                label=row["maple_label"],
+                amount=decimal.Decimal(row[data.amount_field]),  # pyright: ignore
+                txn_type=row["maple_txn_type"],
+                account_id=data.account_id,
+                category_id=row["maple_txn_category"],
+                txn_date=datetime.strptime(row[data.txn_date_field], data.txn_date_format).date(),  # pyright: ignore
+                original_note=row[data.note_field] if data.note_field else None,
+            )
+        )
+        await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
+    await transaction_repo.session.commit()
     return None
 
 
