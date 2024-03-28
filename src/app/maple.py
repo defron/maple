@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated, Any, cast
 
 import msgspec
+import numpy
 import pandas
 from advanced_alchemy import AsyncSessionConfig, ConflictError
 from litestar import Litestar, delete, get, post, put
@@ -56,6 +57,7 @@ from app.dto.repos import (
     TagRepository,
     TransactionRepository,
 )
+from app.enums.enums import DateFormatFirstSegment
 from app.helpers.transaction_hash_helper import transaction_hash
 
 
@@ -486,45 +488,54 @@ async def add_bulk_transactions_csv(
     source_id = uuid.UUID("993982ef-1dc4-4982-b9a0-4f7185d60250")
     _category_mapping = msgspec.json.decode((data.category_mapping or "{'*': 1}"), type=dict[str, int], strict=True)
     df = pandas.read_csv(data.file.file, dtype=str)
+    df2 = pandas.DataFrame()
+    format_date = {"dayfirst": False, "yearfirst": False}
+    if data.txn_date_parse_preference == DateFormatFirstSegment.Day:
+        format_date["dayfirst"] = True
+    elif data.txn_date_parse_preference == DateFormatFirstSegment.Year:
+        format_date["yearfirst"] = True
+    df2["maple_txn_date"] = pandas.to_datetime(
+        df[data.txn_date_field], dayfirst=format_date["dayfirst"], yearfirst=format_date["yearfirst"]
+    ).dt.date
     df.fillna(value="", inplace=True)
     if data.txn_type_from_sign:
-        df["maple_txn_type"] = df.apply(
-            lambda row: (  # pyright: ignore
-                "C" if row[data.amount_field].str.startswith("-", "0") and data.positive_is_credit else "D"
-            ),
-            axis=1,
+        df2["maple_txn_type"] = numpy.where(
+            (df[data.amount_field].str.startswith("-", "0") and data.positive_is_credit), "C", "D"
         )
     else:
-        df["maple_txn_type"] = df.apply(
-            lambda row: "C" if row[data.txn_type_field_name] == data.txn_type_credit_value else "D",  # pyright: ignore
-            axis=1,
-        )
-    df[data.amount_field] = df[data.amount_field].replace({r"$": "", ",": "", "-": ""}, regex=True)
+        df2["maple_txn_type"] = numpy.where(df[data.txn_type_field_name] == data.txn_type_credit_value, "C", "D")
+    df2["maple_amount"] = df[data.amount_field].replace({r"$": "", ",": "", "-": ""}, regex=True)
     if data.category_field is not None:
-        df["maple_txn_category"] = df.apply(
-            lambda row: _category_mapping.get(row[data.category_field], 1), axis=1  # pyright: ignore
-        )
+        df2["maple_txn_category"] = [_category_mapping.get(cat, 1) for cat in df[data.category_field]]
     else:
-        df["maple_txn_category"] = 1
+        df2["maple_txn_category"] = 1
     if data.label_field is None:
-        df["maple_label"] = "Imported Record"
+        df2["maple_label"] = "Imported Record"
     else:
-        df["maple_label"] = df[data.label_field]
-    df["maple_txn_hash"] = df.apply(
+        df2["maple_label"] = df[data.label_field]
+    df2["maple_txn_hash"] = df2.apply(  # type: ignore
         lambda row: transaction_hash(  # pyright: ignore
-            datetime.strptime(row[data.txn_date_field], data.txn_date_format).date(),  # pyright: ignore
-            decimal.Decimal(row[data.amount_field]),  # pyright: ignore
+            row["maple_txn_date"],  # pyright: ignore
+            decimal.Decimal(row["maple_amount"]),  # pyright: ignore
             row["maple_txn_type"],  # pyright: ignore
             row["maple_label"],  # pyright: ignore
         ),
         axis=1,
     )
+    if data.note_field is not None:
+        df2["maple_txn_note"] = df[data.note_field]
+    else:
+        df2["maple_txn_note"] = ""
+    df2["maple_source_metadata"] = [
+        {df.columns.values[index[0]]: v for index, v in numpy.ndenumerate(row)} for row in df.to_numpy()
+    ]
     # TODO: get daycount for the insert
     # is this gonna kill perf?
     daycount = 1
     # load relevant categories
     _categories = await transaction_repo.session.execute(select(Category))
-    for _index, row in df.iterrows():  # pyright: ignore
+    # temporary, soon will do bulk insert via csv
+    for _index, row in df2.iterrows():  # pyright: ignore
         obj = await transaction_repo.add(
             Transaction(
                 soft_delete=False,
@@ -532,15 +543,15 @@ async def add_bulk_transactions_csv(
                 txn_source_id=source_id,
                 txn_hash=row["maple_txn_hash"],
                 daycount=daycount,
-                source_metadata=row.to_dict(),
+                source_metadata=row["maple_source_metadata"],
                 external_txn_id=data.file.filename,
                 label=row["maple_label"],
-                amount=decimal.Decimal(row[data.amount_field]),  # pyright: ignore
+                amount=decimal.Decimal(row["maple_amount"]),  # pyright: ignore
                 txn_type=row["maple_txn_type"],
                 account_id=data.account_id,
                 category_id=row["maple_txn_category"],
-                txn_date=datetime.strptime(row[data.txn_date_field], data.txn_date_format).date(),  # pyright: ignore
-                original_note=row[data.note_field] if data.note_field else None,
+                txn_date=row["maple_txn_date"],
+                original_note=row["maple_txn_note"],
             )
         )
         await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])

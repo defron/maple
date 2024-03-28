@@ -8,6 +8,7 @@ from litestar.datastructures import UploadFile
 from pydantic import BaseModel
 
 from app.dto.entities import Account, Transaction
+from app.enums.enums import DateFormatFirstSegment
 
 
 class Base(BaseModel):
@@ -193,7 +194,7 @@ class CsvTransactionsRequest:
     category_field: str | None
     category_mapping: str | None
     txn_date_field: str
-    txn_date_format: str
+    txn_date_parse_preference: DateFormatFirstSegment
     note_field: str | None
     external_txn_id_field: str | None
     file: UploadFile
