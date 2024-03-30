@@ -516,7 +516,9 @@ async def add_bulk_transactions_csv(
         df2["maple_txn_type"] = numpy.where(df[data.txn_type_field_name] == data.txn_type_credit_value, "C", "D")
     df2["maple_amount"] = df[data.amount_field].replace({r"$": "", ",": "", "-": ""}, regex=True)
     if data.category_field is not None:
-        df2["maple_txn_category"] = [_category_mapping.get(cat, 1) for cat in df[data.category_field]]
+        df2["maple_txn_category"] = [
+            _category_mapping.get(cat, 1) for cat in df[data.category_field]  # pyright: ignore
+        ]
     else:
         df2["maple_txn_category"] = 1
     if data.label_field is None:
@@ -602,6 +604,21 @@ async def create_subtransaction(
     return txn
 
 
+@delete(
+    "/api/transaction/subtransaction/{id:int}",
+    return_dto=TransactionDTO,
+    dependencies={
+        "subtransaction_repo": Provide(provide_subtransaction_repo),
+    },
+)
+async def delete_subtransaction(subtransaction_repo: SubtransactionRepository, id: int) -> None:
+    obj = await subtransaction_repo.delete(id)
+    if obj.id == id:
+        await subtransaction_repo.session.commit()
+        return None
+    raise NotFoundException(detail="No data found")
+
+
 config = MAPLE_CONFIG
 
 
@@ -679,6 +696,7 @@ __app = Litestar(
         get_all_transactions_for_account,
         add_bulk_transactions_csv,
         create_subtransaction,
+        delete_subtransaction,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
