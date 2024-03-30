@@ -171,6 +171,13 @@ class UpdateTransactionRequest(Base):
     soft_delete: bool | None
 
 
+class SubtransactionRequest(Base):
+    description: str
+    amount: decimal.Decimal
+    category_id: int
+    custom_note: str | None
+
+
 class TransactionDTO(SQLAlchemyDTO[Transaction]):
     config = SQLAlchemyDTOConfig(
         exclude={
@@ -178,7 +185,9 @@ class TransactionDTO(SQLAlchemyDTO[Transaction]):
             "paid_bill",
             "transaction_source",
             "tag_associations",
-        }
+            "category.subcategories",
+        },
+        max_nested_depth=2,
     )
 
 

@@ -30,6 +30,7 @@ from app.dto.entities import (
     AccountType,
     Category,
     Institution,
+    Subtransaction,
     TimeSpan,
     Transaction,
     TransactionSource,
@@ -45,6 +46,7 @@ from app.dto.models import (
     InstitutionRequestModel,
     InstitutionResponseModel,
     ManualTransactionRequest,
+    SubtransactionRequest,
     TagRequestModel,
     TagResponseModel,
     TransactionDTO,
@@ -54,6 +56,7 @@ from app.dto.repos import (
     AccountRepository,
     CategoryRepository,
     InstitutionRepository,
+    SubtransactionRepository,
     TagRepository,
     TransactionRepository,
 )
@@ -84,6 +87,11 @@ async def provide_account_repo(db_session: AsyncSession) -> AccountRepository:
 async def provide_transaction_repo(db_session: AsyncSession) -> TransactionRepository:
     """This provides the default Account repository."""
     return TransactionRepository(session=db_session)
+
+
+async def provide_subtransaction_repo(db_session: AsyncSession) -> SubtransactionRepository:
+    """This provides the default Account repository."""
+    return SubtransactionRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -490,6 +498,8 @@ async def add_bulk_transactions_csv(
     df = pandas.read_csv(data.file.file, dtype=str)
     df2 = pandas.DataFrame()
     format_date = {"dayfirst": False, "yearfirst": False}
+    # [print(row) for row in zip(*[df[col] for col in df.columns.values])]
+    # [print(row.size) for row in df.to_numpy()]
     if data.txn_date_parse_preference == DateFormatFirstSegment.Day:
         format_date["dayfirst"] = True
     elif data.txn_date_parse_preference == DateFormatFirstSegment.Year:
@@ -513,7 +523,7 @@ async def add_bulk_transactions_csv(
         df2["maple_label"] = "Imported Record"
     else:
         df2["maple_label"] = df[data.label_field]
-    df2["maple_txn_hash"] = df2.apply(  # type: ignore
+    df2["maple_txn_hash"] = df2.apply(  # pyright: ignore
         lambda row: transaction_hash(  # pyright: ignore
             row["maple_txn_date"],  # pyright: ignore
             decimal.Decimal(row["maple_amount"]),  # pyright: ignore
@@ -557,6 +567,41 @@ async def add_bulk_transactions_csv(
         await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
     await transaction_repo.session.commit()
     return None
+
+
+@post(
+    "/api/transaction/{txn_id:int}/subtransaction",
+    return_dto=TransactionDTO,
+    dependencies={
+        "transaction_repo": Provide(provide_transaction_repo),
+        "subtransaction_repo": Provide(provide_subtransaction_repo),
+    },
+)
+async def create_subtransaction(
+    transaction_repo: TransactionRepository,
+    subtransaction_repo: SubtransactionRepository,
+    txn_id: int,
+    data: SubtransactionRequest,
+) -> Transaction:
+    # TODO: I don't like this being right here
+    txn = await transaction_repo.get(txn_id)
+    await transaction_repo.session.refresh(txn, ["subtransactions"])
+    available = txn.amount
+    for subtxn in txn.subtransactions:
+        available -= subtxn.amount
+    if available < data.amount:
+        raise MethodNotAllowedException(
+            detail="Total of subtransactions must be less than or equal to the transaction"
+        )
+    _new_subtxn = await subtransaction_repo.add(
+        Subtransaction(
+            txn_id=txn_id,
+            **data.model_dump(exclude_unset=True, exclude_none=True),
+        )
+    )
+    await transaction_repo.session.refresh(txn, ["category", "tags", "subtransactions"])
+    await transaction_repo.session.commit()
+    return txn
 
 
 config = MAPLE_CONFIG
@@ -635,6 +680,7 @@ __app = Litestar(
         create_manual_transaction,
         get_all_transactions_for_account,
         add_bulk_transactions_csv,
+        create_subtransaction,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

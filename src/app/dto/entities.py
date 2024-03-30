@@ -338,12 +338,12 @@ class Subtransaction(Base):
     description: Mapped[str] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11, 4), nullable=False)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)
-    custom_note: Mapped[str] = mapped_column(String(length=4096))
+    custom_note: Mapped[Optional[str]] = mapped_column(String(length=4096))
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    category: Mapped["Category"] = relationship(back_populates="subtransactions", lazy="select")
+    category: Mapped["Category"] = relationship(lazy="joined")
     split_transaction: Mapped["Transaction"] = relationship(
-        back_populates="subtransactions", lazy="select", info=dto_field("private")
+        back_populates="subtransactions", lazy="noload", info=dto_field("private")
     )
 
 
