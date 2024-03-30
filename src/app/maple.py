@@ -586,9 +586,7 @@ async def create_subtransaction(
     # TODO: I don't like this being right here
     txn = await transaction_repo.get(txn_id)
     await transaction_repo.session.refresh(txn, ["subtransactions"])
-    available = txn.amount
-    for subtxn in txn.subtransactions:
-        available -= subtxn.amount
+    available = txn.amount - sum(subtxn.amount for subtxn in txn.subtransactions)
     if available < data.amount:
         raise MethodNotAllowedException(
             detail="Total of subtransactions must be less than or equal to the transaction"
