@@ -198,7 +198,9 @@ async def select_accounts(session: AsyncSession, include_inactive: bool = False)
         return None
 
 
-async def select_transactions(session: AsyncSession, account_id: int | None = None) -> Sequence[Transaction] | None:
+async def select_transactions(
+    session: AsyncSession, account_id: int | None = None, limit: int | None = None, offset: int | None = None
+) -> Sequence[Transaction] | None:
     query = (
         select(Transaction)
         .options(
@@ -208,6 +210,10 @@ async def select_transactions(session: AsyncSession, account_id: int | None = No
     )
     if account_id is not None:
         query = query.where(Transaction.account_id == account_id)
+    if limit is not None:
+        query = query.limit(limit)
+    if offset is not None:
+        query = query.offset(offset)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -424,17 +430,21 @@ async def update_account(
 
 
 @get("/api/transactions", return_dto=TransactionDTO, status_code=HTTP_200_OK)
-async def get_transactions(transaction: AsyncSession) -> Sequence[Transaction]:
-    res = await select_transactions(transaction)
+async def get_transactions(
+    transaction: AsyncSession, limit: int | None = None, offset: int | None = None
+) -> Sequence[Transaction]:
+    res = await select_transactions(transaction, None, limit, offset)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
 
 
-@get("/api/transactions/{account_id:int}/all", return_dto=TransactionDTO, status_code=HTTP_200_OK)
-async def get_all_transactions_for_account(transaction: AsyncSession, account_id: int) -> Sequence[Transaction]:
+@get("/api/transactions/{account_id:int}", return_dto=TransactionDTO, status_code=HTTP_200_OK)
+async def get_transactions_for_account(
+    transaction: AsyncSession, account_id: int, limit: int | None = None, offset: int | None = None
+) -> Sequence[Transaction]:
     # TODO: need to change this and add date filter
-    res = await select_transactions(transaction, account_id)
+    res = await select_transactions(transaction, account_id, limit, offset)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -733,7 +743,7 @@ __app = Litestar(
         update_account,
         create_manual_transaction,
         get_transactions,
-        get_all_transactions_for_account,
+        get_transactions_for_account,
         add_bulk_transactions_csv,
         create_subtransaction,
         delete_subtransaction,
