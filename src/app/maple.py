@@ -619,6 +619,37 @@ async def delete_subtransaction(subtransaction_repo: SubtransactionRepository, i
     raise NotFoundException(detail="No data found")
 
 
+@put(
+    "/api/transaction/{txn_id:int}/subtransaction/{id:int}",
+    return_dto=TransactionDTO,
+    dependencies={
+        "transaction_repo": Provide(provide_transaction_repo),
+        "subtransaction_repo": Provide(provide_subtransaction_repo),
+    },
+)
+async def update_subtransaction(
+    transaction_repo: TransactionRepository,
+    subtransaction_repo: SubtransactionRepository,
+    data: SubtransactionRequest,
+    id: int,
+    txn_id: int,
+) -> Transaction:
+    timestamp = datetime.now()
+    txn = await transaction_repo.get(txn_id)
+    await transaction_repo.session.refresh(txn, ["subtransactions"])
+    available = txn.amount - sum(subtxn.amount for subtxn in txn.subtransactions if subtxn.id != id)
+    if available < data.amount:
+        raise MethodNotAllowedException(
+            detail="Total of subtransactions must be less than or equal to the transaction"
+        )
+    _subtxn = await subtransaction_repo.update(
+        Subtransaction(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
+    )
+    await transaction_repo.session.refresh(txn, ["category", "subtransactions", "tags"])
+    await subtransaction_repo.session.commit()
+    return txn
+
+
 config = MAPLE_CONFIG
 
 
@@ -697,6 +728,7 @@ __app = Litestar(
         add_bulk_transactions_csv,
         create_subtransaction,
         delete_subtransaction,
+        update_subtransaction,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],
