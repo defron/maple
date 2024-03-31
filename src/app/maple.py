@@ -189,7 +189,7 @@ async def select_accounts(session: AsyncSession, include_inactive: bool = False)
         .order_by(Account.id)
     )
     if not include_inactive:
-        query.where(Account.is_active)
+        query = query.where(Account.is_active)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -207,7 +207,7 @@ async def select_transactions(session: AsyncSession, account_id: int | None = No
         .order_by(Transaction.txn_date.desc(), Transaction.id)
     )
     if account_id is not None:
-        query.where(Transaction.account_id == account_id)
+        query = query.where(Transaction.account_id == account_id)
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
@@ -421,6 +421,14 @@ async def update_account(
     await account_repo.session.refresh(obj, ["account_type"])
     await account_repo.session.commit()
     return AccountResponseModel.model_validate(obj)
+
+
+@get("/api/transactions", return_dto=TransactionDTO, status_code=HTTP_200_OK)
+async def get_transactions(transaction: AsyncSession) -> Sequence[Transaction]:
+    res = await select_transactions(transaction)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
 
 
 @get("/api/transactions/{account_id:int}/all", return_dto=TransactionDTO, status_code=HTTP_200_OK)
@@ -724,6 +732,7 @@ __app = Litestar(
         delete_account,
         update_account,
         create_manual_transaction,
+        get_transactions,
         get_all_transactions_for_account,
         add_bulk_transactions_csv,
         create_subtransaction,
