@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import Annotated, Any, cast
 
 import msgspec
 import numpy
@@ -22,6 +22,7 @@ from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio.scoping import async_scoped_session
 from sqlalchemy.orm import joinedload, noload
 
 from app.config import MAPLE_CONFIG
@@ -62,9 +63,6 @@ from app.dto.repos import (
 )
 from app.enums.enums import DateFormatFirstSegment, TransactionType
 from app.helpers.transaction_hash_helper import transaction_hash
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio.scoping import async_scoped_session
 
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
@@ -551,7 +549,7 @@ async def add_bulk_transactions_csv(
     df.fillna(value="", inplace=True)
     if data.txn_type_from_sign:
         df2["maple_txn_type"] = numpy.where(
-            df[data.amount_field].str.startswith("-", na=False) and not account_info.account_type.is_asset,
+            df[data.amount_field].str.startswith("-", na=False) & (not account_info.account_type.is_asset),
             TransactionType.Credit.value,
             TransactionType.Debit.value,
         )
