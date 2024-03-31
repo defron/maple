@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS maple.historical_account_balance (
 CREATE TABLE IF NOT EXISTS maple.cashflow (
 	id BIGSERIAL PRIMARY KEY,
 	account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
-	 DATE NOT NULL,
+	cashflow_date DATE NOT NULL,
     inflow NUMERIC(14,4) NOT NULL DEFAULT 0,
     outflow NUMERIC(14,4) NOT NULL DEFAULT 0,
     transfer_in NUMERIC(14,4) NOT NULL DEFAULT 0,

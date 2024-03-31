@@ -228,11 +228,18 @@ class Cashflow(Base):
     __tablename__ = "cashflow"  #  type: ignore[assignment]
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
-    time_period: Mapped[date] = mapped_column(Date, nullable=False)
+    cashflow_date: Mapped[date] = mapped_column(Date, nullable=False)
     inflow: Mapped[decimal.Decimal] = mapped_column(
         Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
     )
+    
     outflow: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
+    )
+    transfer_in: Mapped[decimal.Decimal] = mapped_column(
+        Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
+    )
+    transfer_out: Mapped[decimal.Decimal] = mapped_column(
         Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
     )
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

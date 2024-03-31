@@ -29,6 +29,7 @@ from app.config import MAPLE_CONFIG
 from app.dto.entities import (
     Account,
     AccountType,
+    Cashflow,
     Category,
     Institution,
     Subtransaction,
@@ -55,6 +56,7 @@ from app.dto.models import (
 )
 from app.dto.repos import (
     AccountRepository,
+    CashflowRepository,
     CategoryRepository,
     InstitutionRepository,
     SubtransactionRepository,
@@ -62,6 +64,7 @@ from app.dto.repos import (
     TransactionRepository,
 )
 from app.enums.enums import DateFormatFirstSegment, TransactionType
+from app.helpers.balance_change_helper import balance_change_helper
 from app.helpers.transaction_hash_helper import transaction_hash
 
 
@@ -93,6 +96,11 @@ async def provide_transaction_repo(db_session: AsyncSession) -> TransactionRepos
 async def provide_subtransaction_repo(db_session: AsyncSession) -> SubtransactionRepository:
     """This provides the default Account repository."""
     return SubtransactionRepository(session=db_session)
+
+
+async def provide_cashflow_repo(db_session: AsyncSession) -> CashflowRepository:
+    """This provides the default Account repository."""
+    return CashflowRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -471,11 +479,17 @@ async def get_transactions_for_account(
 @post(
     "/api/transaction/manual",
     return_dto=TransactionDTO,
-    dependencies={"transaction_repo": Provide(provide_transaction_repo)},
+    dependencies={
+        "transaction_repo": Provide(provide_transaction_repo),
+        "cashflow_repo": Provide(provide_cashflow_repo),
+    },
 )
 async def create_manual_transaction(
-    transaction_repo: TransactionRepository, data: ManualTransactionRequest
+    transaction_repo: TransactionRepository, cashflow_repo: CashflowRepository, data: ManualTransactionRequest
 ) -> Transaction:
+    account_info = await get_account_info(transaction_repo.session, data.account_id)
+    if account_info is None:
+        raise MethodNotAllowedException(detail="No matching account")
     # TODO: I don't like this being right here
     source_id = uuid.UUID("74f21da5-5bf9-485d-a934-7a9509aa18a8")
     hash = transaction_hash(data.txn_date, data.amount, data.txn_type, data.label or "")
@@ -498,6 +512,23 @@ async def create_manual_transaction(
         )
     )
     await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
+    insert = False
+    cashflow = await cashflow_repo.get_one_or_none(
+        statement=select(Cashflow)
+        .where(Cashflow.account_id == account_info.id)
+        .where(Cashflow.cashflow_date == data.txn_date)
+    )
+    if cashflow is None:
+        insert = True
+        cashflow = Cashflow(account_id=account_info.id, cashflow_date=data.txn_date)
+
+    cashflow = balance_change_helper(
+        cashflow, account_info.account_type, data.amount, TransactionType(data.txn_type), obj.category
+    )
+
+    if insert:
+        cashflow = await cashflow_repo.add(cashflow)
+
     await transaction_repo.session.commit()
     return obj
 
