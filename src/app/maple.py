@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import msgspec
 import numpy
@@ -60,8 +60,11 @@ from app.dto.repos import (
     TagRepository,
     TransactionRepository,
 )
-from app.enums.enums import DateFormatFirstSegment
+from app.enums.enums import DateFormatFirstSegment, TransactionType
 from app.helpers.transaction_hash_helper import transaction_hash
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio.scoping import async_scoped_session
 
 
 async def provide_institution_repo(db_session: AsyncSession) -> InstitutionRepository:
@@ -172,6 +175,23 @@ async def select_tags(session: AsyncSession) -> Sequence[TransactionTag] | None:
     try:
         result = await session.execute(query)
         return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def get_account_info(session: AsyncSession | async_scoped_session[AsyncSession], id: int) -> Account | None:
+    query = (
+        select(Account).options(
+            joinedload(Account.account_type),
+            joinedload(Account.transaction_rules),
+            noload(Account.institution),
+            noload(Account.bills),
+        )
+    ).where(Account.id == id)
+    try:
+        result = await session.execute(query)
+        return result.scalar()
     except Exception as e:
         print(e)
         return None
@@ -510,6 +530,9 @@ async def add_bulk_transactions_csv(
     transaction_repo: TransactionRepository,
     data: Annotated[CsvTransactionsRequest, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> None:
+    account_info = await get_account_info(transaction_repo.session, data.account_id)
+    if account_info is None:
+        raise MethodNotAllowedException(detail="No matching account")
     # TODO: I don't like this being right here
     source_id = uuid.UUID("993982ef-1dc4-4982-b9a0-4f7185d60250")
     _category_mapping = msgspec.json.decode((data.category_mapping or "{'*': 1}"), type=dict[str, int], strict=True)
@@ -528,10 +551,16 @@ async def add_bulk_transactions_csv(
     df.fillna(value="", inplace=True)
     if data.txn_type_from_sign:
         df2["maple_txn_type"] = numpy.where(
-            (df[data.amount_field].str.startswith("-", "0") and data.positive_is_credit), "C", "D"
+            df[data.amount_field].str.startswith("-", na=False) and not account_info.account_type.is_asset,
+            TransactionType.Credit.value,
+            TransactionType.Debit.value,
         )
     else:
-        df2["maple_txn_type"] = numpy.where(df[data.txn_type_field_name] == data.txn_type_credit_value, "C", "D")
+        df2["maple_txn_type"] = numpy.where(
+            df[data.txn_type_field_name] == data.txn_type_credit_value,
+            TransactionType.Credit.value,
+            TransactionType.Debit.value,
+        )
     df2["maple_amount"] = df[data.amount_field].replace({r"$": "", ",": "", "-": ""}, regex=True)
     if data.category_field is not None:
         df2["maple_txn_category"] = [

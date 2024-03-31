@@ -197,7 +197,6 @@ class CsvTransactionsRequest:
     label_field: str | None
     amount_field: str
     txn_type_from_sign: bool
-    positive_is_credit: bool
     txn_type_field_name: str
     txn_type_credit_value: str
     category_field: str | None
