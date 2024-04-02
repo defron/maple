@@ -2,7 +2,7 @@ import decimal
 import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, cast
 
 import msgspec
@@ -16,7 +16,7 @@ from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE
 from litestar.di import Provide
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import ClientException, HTTPException, MethodNotAllowedException, NotFoundException
-from litestar.params import Body
+from litestar.params import Body, Parameter
 from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, func, select
@@ -248,6 +248,24 @@ async def select_transactions(
         return None
 
 
+async def select_cashflows(
+    session: AsyncSession, start_date: date, end_date: date, account_id: int | None = None
+) -> Sequence[Cashflow] | None:
+    query = (
+        (select(Cashflow).options(joinedload(Cashflow.account)).order_by(Cashflow.id, Cashflow.cashflow_date.desc()))
+        .where(Cashflow.cashflow_date >= start_date)
+        .where(Cashflow.cashflow_date <= end_date)
+    )
+    if account_id is not None:
+        query = query.where(Cashflow.account_id == account_id)
+    try:
+        result = await session.execute(query)
+        return result.unique().scalars().all()
+    except Exception as e:
+        print(e)
+        return None
+
+
 @get("/")
 async def index() -> str:
     return "Hello, world!"
@@ -455,21 +473,10 @@ async def update_account(
     return AccountResponseModel.model_validate(obj)
 
 
-@get("/api/transactions", return_dto=TransactionDTO, status_code=HTTP_200_OK)
+@get(["/api/transactions", "/api/transactions/{account_id:int}"], return_dto=TransactionDTO, status_code=HTTP_200_OK)
 async def get_transactions(
-    transaction: AsyncSession, limit: int | None = None, offset: int | None = None
+    transaction: AsyncSession, account_id: int | None = None, limit: int | None = None, offset: int | None = None
 ) -> Sequence[Transaction]:
-    res = await select_transactions(transaction, None, limit, offset)
-    if res is None:
-        raise NotFoundException(detail="No data found")
-    return res
-
-
-@get("/api/transactions/{account_id:int}", return_dto=TransactionDTO, status_code=HTTP_200_OK)
-async def get_transactions_for_account(
-    transaction: AsyncSession, account_id: int, limit: int | None = None, offset: int | None = None
-) -> Sequence[Transaction]:
-    # TODO: need to change this and add date filter
     res = await select_transactions(transaction, account_id, limit, offset)
     if res is None:
         raise NotFoundException(detail="No data found")
@@ -726,6 +733,19 @@ async def update_subtransaction(
     return txn
 
 
+@get(["/api/cashflow", "/api/cashflows/{account_id:int}"], status_code=HTTP_200_OK)
+async def get_cashflow(
+    transaction: AsyncSession,
+    start: Annotated[date, Parameter()],
+    end: Annotated[date, Parameter()],
+    account_id: int | None = None,
+) -> Sequence[Cashflow]:
+    res = await select_cashflows(transaction, start, end, account_id)
+    if res is None:
+        raise NotFoundException(detail="No data found")
+    return res
+
+
 config = MAPLE_CONFIG
 
 
@@ -801,11 +821,11 @@ __app = Litestar(
         update_account,
         create_manual_transaction,
         get_transactions,
-        get_transactions_for_account,
         add_bulk_transactions_csv,
         create_subtransaction,
         delete_subtransaction,
         update_subtransaction,
+        get_cashflow,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

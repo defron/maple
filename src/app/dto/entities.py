@@ -186,7 +186,7 @@ class Account(Base):
     historical_balances: Mapped[List["HistoricalAccountBalance"]] = relationship(
         back_populates="account", lazy="noload"
     )
-    monthly_cashflows: Mapped[List["Cashflow"]] = relationship(back_populates="account", lazy="noload")
+    cashflows: Mapped[List["Cashflow"]] = relationship(back_populates="account", lazy="noload")
     holdings: Mapped[List["InvestmentPurchase"]] = relationship(back_populates="account", lazy="noload")
     transaction_rules: Mapped[List["AccountTransactionRule"]] = relationship(back_populates="account", lazy="select")
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="account", lazy="noload")
@@ -232,7 +232,7 @@ class Cashflow(Base):
     inflow: Mapped[decimal.Decimal] = mapped_column(
         Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
     )
-    
+
     outflow: Mapped[decimal.Decimal] = mapped_column(
         Numeric(14, 4), nullable=False, default=decimal.Decimal("0"), server_default=text("0")
     )
@@ -244,7 +244,7 @@ class Cashflow(Base):
     )
     created_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_dt: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-    account: Mapped["Account"] = relationship(back_populates="monthly_cashflows", lazy="noload")
+    account: Mapped["Account"] = relationship(back_populates="cashflows", lazy="noload")
 
 
 class InvestmentPurchase(Base):
