@@ -16,7 +16,7 @@ from litestar.contrib.sqlalchemy.plugins.init.config.common import SESSION_SCOPE
 from litestar.di import Provide
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import ClientException, HTTPException, MethodNotAllowedException, NotFoundException
-from litestar.params import Body, Parameter
+from litestar.params import Body
 from litestar.status_codes import HTTP_200_OK, HTTP_204_NO_CONTENT, HTTP_409_CONFLICT
 from litestar.utils import delete_litestar_scope_state, get_litestar_scope_state
 from sqlalchemy import NullPool, func, select
@@ -225,7 +225,12 @@ async def select_accounts(session: AsyncSession, include_inactive: bool = False)
 
 
 async def select_transactions(
-    session: AsyncSession, account_id: int | None = None, limit: int | None = None, offset: int | None = None
+    session: AsyncSession,
+    account_id: int | None = None,
+    after_date: date | None = None,
+    before_date: date | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ) -> Sequence[Transaction] | None:
     query = (
         select(Transaction)
@@ -236,6 +241,10 @@ async def select_transactions(
     )
     if account_id is not None:
         query = query.where(Transaction.account_id == account_id)
+    if after_date is not None:
+        query = query.where(Transaction.txn_date >= after_date)
+    if before_date is not None:
+        query = query.where(Transaction.txn_date <= before_date)
     if limit is not None:
         query = query.limit(limit)
     if offset is not None:
@@ -475,9 +484,14 @@ async def update_account(
 
 @get(["/api/transactions", "/api/transactions/{account_id:int}"], return_dto=TransactionDTO, status_code=HTTP_200_OK)
 async def get_transactions(
-    transaction: AsyncSession, account_id: int | None = None, limit: int | None = None, offset: int | None = None
+    transaction: AsyncSession,
+    account_id: int | None = None,
+    after: date | None = None,
+    before: date | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
 ) -> Sequence[Transaction]:
-    res = await select_transactions(transaction, account_id, limit, offset)
+    res = await select_transactions(transaction, account_id, after, before, limit, offset)
     if res is None:
         raise NotFoundException(detail="No data found")
     return res
@@ -736,8 +750,8 @@ async def update_subtransaction(
 @get(["/api/cashflow", "/api/cashflows/{account_id:int}"], status_code=HTTP_200_OK)
 async def get_cashflow(
     transaction: AsyncSession,
-    start: Annotated[date, Parameter()],
-    end: Annotated[date, Parameter()],
+    start: date,
+    end: date,
     account_id: int | None = None,
 ) -> Sequence[Cashflow]:
     res = await select_cashflows(transaction, start, end, account_id)
