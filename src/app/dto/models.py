@@ -46,6 +46,7 @@ class CategoryRequestModel(Base):
     name: str
     logo: str | None
     is_hidden: bool
+    is_cashflow: bool
     parent_category_id: int | None
 
 
@@ -55,6 +56,7 @@ class CategoryResponseModel(Base):
     logo: str | None
     is_protected: bool
     is_hidden: bool
+    is_cashflow: bool
     parent_category_id: int | None
     created_dt: datetime
     updated_dt: datetime
