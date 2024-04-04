@@ -64,7 +64,7 @@ from app.dto.repos import (
     TransactionRepository,
 )
 from app.enums.enums import DateFormatFirstSegment, TransactionType
-from app.helpers.balance_change_helper import balance_change_helper
+from app.helpers.balance_change_helper import balance_change_helper, updated_balance
 from app.helpers.transaction_hash_helper import transaction_hash
 
 
@@ -529,7 +529,7 @@ async def create_manual_transaction(
             txn_hash=hash,
             daycount=matches,
             source_metadata={},
-            **data.model_dump(exclude_unset=True, exclude_none=True),
+            **data.model_dump(exclude_unset=True, exclude_none=True, exclude=set(["update_balance"])),
         )
     )
     await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
@@ -543,9 +543,11 @@ async def create_manual_transaction(
         insert = True
         cashflow = Cashflow(account_id=account_info.id, cashflow_date=data.txn_date)
 
-    cashflow = balance_change_helper(
-        cashflow, account_info.account_type, data.amount, TransactionType(data.txn_type), obj.category
-    )
+    txn_type = TransactionType(data.txn_type)
+
+    cashflow = balance_change_helper(cashflow, account_info.account_type, data.amount, txn_type, obj.category)
+    if data.update_balance:
+        account_info.balance = updated_balance(account_info, data.amount, txn_type)
 
     if insert:
         cashflow = await cashflow_repo.add(cashflow)

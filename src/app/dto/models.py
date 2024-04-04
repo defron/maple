@@ -161,6 +161,7 @@ class ManualTransactionRequest(Base):
     original_merchant_name: str | None
     merchant_url: str | None
     original_note: str | None
+    update_balance: bool
 
 
 class UpdateTransactionRequest(Base):

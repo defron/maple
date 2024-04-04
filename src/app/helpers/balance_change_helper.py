@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from app.dto.entities import AccountType, Cashflow, Category
+from app.dto.entities import Account, AccountType, Cashflow, Category
 from app.enums.enums import TransactionType
 
 
@@ -27,3 +27,17 @@ def balance_change_helper(
         else:
             cashflow.transfer_in = amount + (cashflow.transfer_in or Decimal(0))
     return cashflow
+
+
+def updated_balance(account: Account, change: Decimal, txn_type: TransactionType) -> Decimal:
+    if account.account_type.is_asset:
+        if txn_type == TransactionType.Debit:
+            account.balance += change
+        else:
+            account.balance -= change
+    else:
+        if txn_type == TransactionType.Credit:
+            account.balance += change
+        else:
+            account.balance -= change
+    return account.balance
