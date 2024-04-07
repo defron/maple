@@ -300,6 +300,7 @@ class Transaction(Base):
     external_txn_id: Mapped[Optional[str]] = mapped_column(String(length=255))
     label: Mapped[Optional[str]] = mapped_column(String(length=4096))
     amount: Mapped[decimal.Decimal] = mapped_column(Numeric(11, 4), nullable=False)
+    split_amount: Mapped[Optional[decimal.Decimal]] = mapped_column(Numeric(11, 4))
     txn_type: Mapped[str] = mapped_column(CHAR(length=1), nullable=False)
     account_id: Mapped[int] = mapped_column(Integer, ForeignKey("account.id", ondelete="CASCADE"), nullable=False)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("category.id", ondelete="RESTRICT"), nullable=False)

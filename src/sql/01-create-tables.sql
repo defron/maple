@@ -189,6 +189,7 @@ CREATE TABLE IF NOT EXISTS maple.transaction (
     external_txn_id VARCHAR(255),
 	label VARCHAR(4096),
     amount NUMERIC(11,4) NOT NULL,
+    split_amount NUMERIC(11,4),
     txn_type CHAR(1) NOT NULL,
     account_id INT NOT NULL REFERENCES maple.account(id) ON DELETE CASCADE,
     category_id INT NOT NULL REFERENCES maple.category(id) ON DELETE RESTRICT,

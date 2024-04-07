@@ -684,14 +684,11 @@ async def create_subtransaction(
     txn_id: int,
     data: SubtransactionRequest,
 ) -> Transaction:
-    # TODO: I don't like this being right here
     txn = await transaction_repo.get(txn_id)
     await transaction_repo.session.refresh(txn, ["subtransactions"])
     available = txn.amount - sum(subtxn.amount for subtxn in txn.subtransactions)
-    if available < data.amount:
-        raise MethodNotAllowedException(
-            detail="Total of subtransactions must be less than or equal to the transaction"
-        )
+    if available <= data.amount:
+        raise MethodNotAllowedException(detail="Total of subtransactions must be less than the original transaction")
     _new_subtxn = await subtransaction_repo.add(
         Subtransaction(
             txn_id=txn_id,
@@ -699,6 +696,7 @@ async def create_subtransaction(
         )
     )
     await transaction_repo.session.refresh(txn, ["category", "tags", "subtransactions"])
+    txn.split_amount = available - data.amount
     await transaction_repo.session.commit()
     return txn
 
@@ -707,12 +705,21 @@ async def create_subtransaction(
     "/api/transaction/subtransaction/{id:int}",
     return_dto=TransactionDTO,
     dependencies={
+        "transaction_repo": Provide(provide_transaction_repo),
         "subtransaction_repo": Provide(provide_subtransaction_repo),
     },
 )
-async def delete_subtransaction(subtransaction_repo: SubtransactionRepository, id: int) -> None:
+async def delete_subtransaction(
+    transaction_repo: TransactionRepository, subtransaction_repo: SubtransactionRepository, id: int
+) -> None:
     obj = await subtransaction_repo.delete(id)
     if obj.id == id:
+        parent_txn = await transaction_repo.get(obj.txn_id)
+        parent_txn.split_amount = (
+            None
+            if (parent_txn.split_amount or 0) + obj.amount == parent_txn.amount
+            else (parent_txn.split_amount or 0) + obj.amount
+        )
         await subtransaction_repo.session.commit()
         return None
     raise NotFoundException(detail="No data found")
@@ -736,15 +743,19 @@ async def update_subtransaction(
     timestamp = datetime.now()
     txn = await transaction_repo.get(txn_id)
     await transaction_repo.session.refresh(txn, ["subtransactions"])
-    available = txn.amount - sum(subtxn.amount for subtxn in txn.subtransactions if subtxn.id != id)
-    if available < data.amount:
+    if id not in [subtxn.id for subtxn in txn.subtransactions]:
         raise MethodNotAllowedException(
-            detail="Total of subtransactions must be less than or equal to the transaction"
+            detail="Subtransaction's parent transaction id does not match the given transaction id"
         )
+    old_amount = next((subtxn.amount for subtxn in txn.subtransactions if subtxn.id == id), decimal.Decimal(0))
+    available = txn.amount - sum(subtxn.amount for subtxn in txn.subtransactions if subtxn.id != id)
+    if available <= data.amount:
+        raise MethodNotAllowedException(detail="Total of subtransactions must be less than the original transaction")
     _subtxn = await subtransaction_repo.update(
         Subtransaction(id=id, updated_dt=timestamp, **data.model_dump(exclude_unset=True, exclude_none=True)),
     )
     await transaction_repo.session.refresh(txn, ["category", "subtransactions", "tags"])
+    txn.split_amount = (txn.split_amount or 0) + old_amount - data.amount
     await subtransaction_repo.session.commit()
     return txn
 
