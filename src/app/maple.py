@@ -776,7 +776,7 @@ async def get_cashflow(
 config = MAPLE_CONFIG
 
 
-__engine = create_async_engine(
+_engine = create_async_engine(
     f"postgresql+asyncpg://{config.db_user}:{os.environ[config.db_password_key]}@{config.db_host}:{config.db_port}/{config.db_name}",
     connect_args={"server_settings": dict(search_path=config.db_search_schema)},
     echo=config.db_echo,
@@ -788,7 +788,7 @@ __engine = create_async_engine(
     poolclass=NullPool if config.db_pool_disable else None,
 )
 
-async_session_factory = async_sessionmaker(__engine, expire_on_commit=False, class_=AsyncSession)
+async_session_factory = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncSession)
 
 
 async def before_send_handler(message: Any, scope: Any) -> None:
@@ -817,14 +817,14 @@ session_config = AsyncSessionConfig(expire_on_commit=False)
 
 _db_config = SQLAlchemyAsyncConfig(
     session_dependency_key="db_session",
-    engine_instance=__engine,
+    engine_instance=_engine,
     session_maker=async_session_factory,
     before_send_handler=before_send_handler,
     session_config=session_config,
 )
 
 
-__app = Litestar(
+_app = Litestar(
     [
         index,
         get_account_types,
@@ -863,4 +863,4 @@ __app = Litestar(
 
 
 def Maple() -> Litestar:
-    return __app
+    return _app
