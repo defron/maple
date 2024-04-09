@@ -10,17 +10,12 @@ from pydantic import BaseModel
 from app.dto.entities import Account, Transaction
 from app.enums.enums import DateFormatFirstSegment
 
-
+# TODO: Should I move to msgspec entirely?
+# Would need to implement a to_dict method + more response exclusions
 class Base(BaseModel):
     """Extend Pydantic's BaseModel to enable ORM mode"""
 
     model_config = {"from_attributes": True}
-
-
-class UploadBase(BaseModel):
-    """Extend Pydantic's BaseModel to enable ORM mode"""
-
-    model_config = {"from_attributes": True, "arbitrary_types_allowed": True}
 
 
 class InstitutionRequestModel(Base):
