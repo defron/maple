@@ -209,3 +209,4 @@ class CsvTransactionsRequest:
     note_field: str | None
     external_txn_id_field: str | None
     file: UploadFile
+    update_balance_after: date | None

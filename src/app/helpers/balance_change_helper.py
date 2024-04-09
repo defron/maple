@@ -29,15 +29,15 @@ def balance_change_helper(
     return cashflow
 
 
-def updated_balance(account: Account, change: Decimal, txn_type: TransactionType) -> Decimal:
+def updated_balance(account: Account, balance: Decimal, change: Decimal, txn_type: TransactionType) -> Decimal:
     if account.account_type.is_asset:
         if txn_type == TransactionType.Debit:
-            account.balance += change
+            balance += change
         else:
-            account.balance -= change
+            balance -= change
     else:
         if txn_type == TransactionType.Credit:
-            account.balance += change
+            balance+= change
         else:
-            account.balance -= change
-    return account.balance
+            balance -= change
+    return balance

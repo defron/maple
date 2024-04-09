@@ -547,7 +547,7 @@ async def create_manual_transaction(
 
     cashflow = balance_change_helper(cashflow, account_info.account_type, data.amount, txn_type, obj.category)
     if data.update_balance:
-        account_info.balance = updated_balance(account_info, data.amount, txn_type)
+        account_info.balance = updated_balance(account_info, account_info.balance, data.amount, txn_type)
 
     if insert:
         cashflow = await cashflow_repo.add(cashflow)
@@ -640,12 +640,15 @@ async def add_bulk_transactions_csv(
     df2["maple_source_metadata"] = [
         {df.columns.values[index[0]]: v for index, v in numpy.ndenumerate(row)} for row in df.to_numpy()
     ]
+    # ensure newest first
+    df2 = df2.sort_values(by="maple_txn_date")
     # TODO: get daycount for the insert
     # is this gonna kill perf?
     daycount = 1
     # load relevant categories
     _categories = await transaction_repo.session.execute(select(Category))
     # temporary, soon will do bulk insert via csv
+    curr_bal = account_info.balance
     for _index, row in df2.iterrows():  # pyright: ignore
         obj = await transaction_repo.add(
             Transaction(
@@ -665,7 +668,12 @@ async def add_bulk_transactions_csv(
                 original_note=row["maple_txn_note"],
             )
         )
+        if data.update_balance_after is not None and data.update_balance_after <= row["maple_txn_date"]:
+            curr_bal = updated_balance(
+                account_info, curr_bal, decimal.Decimal(row["maple_amount"]), row["maple_txn_type"]  # pyright: ignore
+            )
         await transaction_repo.session.refresh(obj, ["category", "subtransactions", "tags"])
+    account_info.balance = curr_bal
     await transaction_repo.session.commit()
     return None
 
