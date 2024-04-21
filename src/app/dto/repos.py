@@ -1,6 +1,6 @@
 from advanced_alchemy import SQLAlchemyAsyncRepository
 
-from app.dto.entities import Account, Cashflow, Category, Institution, Subtransaction, Transaction, TransactionTag
+from app.dto.entities import Account, Budget, Cashflow, Category, Institution, Subtransaction, Transaction, TransactionTag
 
 
 class InstitutionRepository(SQLAlchemyAsyncRepository[Institution]):
@@ -28,18 +28,23 @@ class AccountRepository(SQLAlchemyAsyncRepository[Account]):
 
 
 class TransactionRepository(SQLAlchemyAsyncRepository[Transaction]):
-    """Account repository."""
+    """Transaction repository."""
 
     model_type = Transaction
 
 
 class SubtransactionRepository(SQLAlchemyAsyncRepository[Subtransaction]):
-    """Account repository."""
+    """Subtransaction repository."""
 
     model_type = Subtransaction
 
 
 class CashflowRepository(SQLAlchemyAsyncRepository[Cashflow]):
-    """Account repository."""
+    """Cashflow repository."""
 
     model_type = Cashflow
+
+class BudgetRepository(SQLAlchemyAsyncRepository[Budget]):
+    """Budget repository."""
+
+    model_type = Budget

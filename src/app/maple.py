@@ -29,6 +29,7 @@ from app.config import MAPLE_CONFIG
 from app.dto.entities import (
     Account,
     AccountType,
+    Budget,
     Cashflow,
     Category,
     Institution,
@@ -42,6 +43,7 @@ from app.dto.models import (
     AccountDTO,
     AccountRequestModel,
     AccountResponseModel,
+    BudgetRequestModel,
     CategoryRequestModel,
     CategoryResponseModel,
     CsvTransactionsRequest,
@@ -56,6 +58,7 @@ from app.dto.models import (
 )
 from app.dto.repos import (
     AccountRepository,
+    BudgetRepository,
     CashflowRepository,
     CategoryRepository,
     InstitutionRepository,
@@ -101,6 +104,11 @@ async def provide_subtransaction_repo(db_session: AsyncSession) -> Subtransactio
 async def provide_cashflow_repo(db_session: AsyncSession) -> CashflowRepository:
     """This provides the default Account repository."""
     return CashflowRepository(session=db_session)
+
+
+async def provide_budget_repo(db_session: AsyncSession) -> BudgetRepository:
+    """This provides the default Account repository."""
+    return BudgetRepository(session=db_session)
 
 
 async def provide_transaction(db_session: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
@@ -781,6 +789,14 @@ async def get_cashflow(
     return res
 
 
+@post("/api/budget", dependencies={"budget_repo": Provide(provide_budget_repo)})
+async def create_budget(budget_repo: BudgetRepository, data: BudgetRequestModel) -> Budget:
+    obj = await budget_repo.add(Budget(**data.model_dump(exclude_unset=True, exclude_none=True)))
+    await budget_repo.session.refresh(obj, ["category"])
+    await budget_repo.session.commit()
+    return obj
+
+
 config = MAPLE_CONFIG
 
 
@@ -861,6 +877,7 @@ _app = Litestar(
         delete_subtransaction,
         update_subtransaction,
         get_cashflow,
+        create_budget,
     ],
     dependencies={"transaction": provide_transaction},
     plugins=[SQLAlchemyPlugin(_db_config)],

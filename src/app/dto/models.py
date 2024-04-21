@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.dto.entities import Account, Transaction
 from app.enums.enums import DateFormatFirstSegment
 
+
 # TODO: Should I move to msgspec entirely?
 # Would need to implement a to_dict method + more response exclusions
 class Base(BaseModel):
@@ -82,6 +83,16 @@ class AccountRequestModel(Base):
     currency_code: str
     acct_num_masked: str | None
     external_account_metadata: dict[str, Any] | None
+
+
+class BudgetRequestModel(Base):
+    category_id: int
+    amount: decimal.Decimal
+    effective_date: date
+    end_date: date | None
+    timespan_id: int
+    show_always: bool
+    prorate: bool
 
 
 class AccountTypeResponseModel(Base):
